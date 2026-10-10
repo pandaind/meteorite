@@ -6,6 +6,15 @@ in a major release.
 
 ## [Unreleased]
 
+- Redesigned `default` theme (0.3.0) for marketing and docs: sticky header with optional
+  GitHub link and call-to-action button, a front-matter-driven home page (hero with copyable
+  install command, stats, feature grid, showcase, quote, latest posts, CTA), card-grid listings,
+  article layout with a sticky table of contents, code copy buttons, and Open Graph tags.
+  New theme parameters: `github_url`, `header_cta_text`, `header_cta_url`, `logo`, `og_image`
+- Output files are written atomically (temp file + rename), so the dev server never serves a
+  half-written file
+- `new site` starts from a home page that uses the marketing blocks
+
 - Light and dark mode in both bundled themes: a header toggle, remembered per visitor,
   applied before first paint; `color_scheme` and `theme_toggle` theme parameters
 - Code highlighting now emits CSS classes and a generated `highlight.css` with a light and a

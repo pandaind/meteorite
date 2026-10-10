@@ -1,21 +1,36 @@
 name: default
-version: 0.2.0
-description: Clean, readable starter theme with light and dark modes
+version: 0.3.0
+description: Marketing-ready landing page and docs/blog theme with light and dark modes
 author: Meteorite
 meteorite_api: 1
 params:
   color_scheme:
-    default: auto
-    description: "Initial mode: auto (follow the OS), light, or dark. Visitors can override with the toggle."
+    default: dark
+    description: "Initial mode: dark, light, or auto (follow the OS). Visitors can override with the toggle."
   theme_toggle:
     default: true
-    description: Show the light/dark toggle button in the header
+    description: Show the light/dark toggle in the header
   accent:
-    default: "#5b4de0"
+    default: "#4f46e5"
     description: Accent colour in light mode (any CSS colour)
   accent_dark:
-    default: "#a89cff"
+    default: "#8b90ff"
     description: Accent colour in dark mode
+  github_url:
+    default: ""
+    description: Link to your repository; shows a GitHub icon in the header and footer
+  header_cta_text:
+    default: ""
+    description: Label of the filled button at the right of the header (for example Install)
+  header_cta_url:
+    default: ""
+    description: Where the header button goes
+  logo:
+    default: ""
+    description: Path under static/ of a logo image shown instead of the built-in mark
+  og_image:
+    default: ""
+    description: Default social-sharing image (path under static/); pages can override with `image` in front matter
   footer_text:
     default: ""
-    description: Optional text shown in the footer
+    description: Text shown in the footer

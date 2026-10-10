@@ -1005,7 +1005,7 @@ fn write_output(out_dir: &Path, rel: &Path, src: &Source, minify_on: bool) -> Re
         if let Some(parent) = dest.parent() {
             fs::create_dir_all(parent).map_err(io_err(parent))?;
         }
-        fs::write(&dest, bytes).map_err(io_err(&dest))?;
+        write_atomic(&dest, &bytes)?;
         return Ok(true);
     }
 
@@ -1020,6 +1020,30 @@ fn write_output(out_dir: &Path, rel: &Path, src: &Source, minify_on: bool) -> Re
     if let Some(parent) = dest.parent() {
         fs::create_dir_all(parent).map_err(io_err(parent))?;
     }
-    fs::copy(from, &dest).map_err(io_err(&dest))?;
+    let tmp = temp_path(&dest);
+    fs::copy(from, &tmp).map_err(io_err(&tmp))?;
+    fs::rename(&tmp, &dest).map_err(|e| {
+        let _ = fs::remove_file(&tmp);
+        io_err(&dest)(e)
+    })?;
     Ok(true)
+}
+
+fn temp_path(dest: &Path) -> PathBuf {
+    let name = dest
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    dest.with_file_name(format!(".{name}.meteorite-tmp"))
+}
+
+/// Write via a temporary file and rename, so a reader (the dev server, a CDN sync) never
+/// sees a half-written file.
+fn write_atomic(dest: &Path, bytes: &[u8]) -> Result<()> {
+    let tmp = temp_path(dest);
+    fs::write(&tmp, bytes).map_err(io_err(&tmp))?;
+    fs::rename(&tmp, dest).map_err(|e| {
+        let _ = fs::remove_file(&tmp);
+        io_err(dest)(e)
+    })
 }

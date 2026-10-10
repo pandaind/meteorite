@@ -4,7 +4,12 @@ language: en
 theme: default
 
 params:
-  accent: "#d9480f"
+  color_scheme: dark
+  accent: "#4f46e5"
+  accent_dark: "#8b90ff"
+  github_url: https://github.com/pandaind/meteorite
+  header_cta_text: Get started
+  header_cta_url: /guide/getting-started/
   footer_text: "Meteorite documentation. Built with Meteorite."
 
 menus:
@@ -12,6 +17,11 @@ menus:
     - { name: Docs, url: /guide/, weight: 1 }
     - { name: Reference, url: /reference/, weight: 2 }
     - { name: Themes, url: /themes/, weight: 3 }
+
+  footer:
+    - { name: Guide, url: /guide/ }
+    - { name: CLI, url: /reference/cli/ }
+    - { name: Security, url: /reference/security/ }
 
 taxonomies: []
 feed:

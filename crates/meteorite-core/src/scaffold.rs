@@ -17,8 +17,11 @@ theme: {theme}
 
 params:
   author: Me
-  # color_scheme: auto    # auto (follow the OS) | light | dark
-  # theme_toggle: true    # show the light/dark button
+  # Theme options (see the theme's theme.yml for the full list):
+  # color_scheme: dark          # dark | light | auto (follow the OS)
+  # github_url: https://github.com/you/your-repo
+  # header_cta_text: Subscribe
+  # header_cta_url: /blog/
 
 menus:
   main:
@@ -41,15 +44,42 @@ build:
     )
 }
 
-const HOME: &str = "\
----
+const HOME: &str = r#"---
 title: Welcome
+description: A fast static site, built with Meteorite.
+hero:
+  eyebrow: Built with Meteorite
+  title: Your site, written in plain Markdown
+  subtitle: "Content in Markdown, configuration in YAML, themes you can swap in one line. No database, no build chain."
+  command: meteorite serve
+  actions:
+    - { name: Read the blog, url: /blog/, style: primary, icon: book }
+    - { name: About, url: /about/, style: secondary }
+stats:
+  - { value: Markdown, label: "your content, in plain files" }
+  - { value: YAML, label: one config file }
+  - { value: "0", label: databases to run }
+features:
+  title: Everything in one folder
+  subtitle: "Edit these blocks in content/_index.md. Each one is optional."
+  items:
+    - { icon: folder, title: Plain files, text: "Pages are Markdown with YAML front matter. Keep the whole site in git." }
+    - { icon: palette, title: Themes you can swap, text: "Change one line in config.yml and the same content gets a new look." }
+    - { icon: bolt, title: Fast to build, text: "Rebuilds while you type, with live reload in the browser." }
+    - { icon: code, title: Code that looks right, text: "Syntax highlighting with light and dark palettes, plus copy buttons." }
+    - { icon: search, title: Search and feeds, text: "A search index, Atom and RSS feeds and a sitemap, generated for you." }
+    - { icon: shield, title: Safe by default, text: "A built-in link checker catches broken pages before your readers do." }
+latest:
+  title: From the blog
+  section: blog
+  limit: 3
+cta:
+  title: Make it yours
+  text: "Replace this page, add posts under content/blog, and set your own title and URL in config.yml."
+  actions:
+    - { name: Read the blog, url: /blog/, style: primary }
 ---
-# Hello from Meteorite
-
-This site is plain Markdown files with YAML front matter. Edit `content/_index.md`
-to change this page, or run `meteorite new page blog/my-post.md` to add a post.
-";
+"#;
 
 const ABOUT: &str = "\
 ---

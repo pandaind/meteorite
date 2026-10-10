@@ -547,18 +547,37 @@ impl Drop for Server {
     }
 }
 
-fn get(port: u16, path: &str) -> (u16, String) {
-    let mut s = TcpStream::connect(("127.0.0.1", port)).unwrap();
-    s.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+fn try_get(port: u16, path: &str) -> std::io::Result<(u16, String)> {
+    let mut s = TcpStream::connect(("127.0.0.1", port))?;
+    s.set_read_timeout(Some(Duration::from_secs(5)))?;
     write!(
         s,
         "GET {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
-    )
-    .unwrap();
-    let mut buf = String::new();
-    s.read_to_string(&mut buf).unwrap();
-    let status = buf.split_whitespace().nth(1).unwrap().parse().unwrap();
-    (status, buf)
+    )?;
+    let mut raw = Vec::new();
+    s.read_to_end(&mut raw)?;
+    let buf = String::from_utf8_lossy(&raw).into_owned();
+    let status = buf
+        .split_whitespace()
+        .nth(1)
+        .and_then(|s| s.parse().ok())
+        .ok_or_else(|| std::io::Error::other(format!("malformed response: {buf:?}")))?;
+    Ok((status, buf))
+}
+
+/// Socket-level hiccups on a loaded machine are retried; HTTP-level results are not.
+fn get(port: u16, path: &str) -> (u16, String) {
+    let mut last = None;
+    for _ in 0..20 {
+        match try_get(port, path) {
+            Ok(r) => return r,
+            Err(e) => {
+                last = Some(e);
+                std::thread::sleep(Duration::from_millis(50));
+            }
+        }
+    }
+    panic!("GET {path} failed after retries: {:?}", last);
 }
 
 #[test]

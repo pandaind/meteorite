@@ -1,24 +1,33 @@
 {% extends "base.html" %}
+{% import "macros.html" as m %}
 {% block content %}
-<h1>{{ section.title }}</h1>
-{{ page.content | safe }}
-{% if section.subsections %}
-<ul class="subsections">{% for s in section.subsections %}<li><a href="{{ url(path=s.url) }}">{{ s.title }}</a></li>{% endfor %}</ul>
-{% endif %}
-<ul class="post-list">
-{% for p in section.pages %}
-  <li>
-    <a href="{{ url(path=p.url) }}">{{ p.meta.title }}</a>
-    {% if p.date %}<time datetime="{{ p.date }}">{{ p.date }}</time>{% endif %}
-    {% if p.meta.description %}<p>{{ p.meta.description }}</p>{% endif %}
-  </li>
-{% endfor %}
-</ul>
-{% if paginator.total_pages > 1 %}
-<nav class="pagination">
-  {% if paginator.prev_url %}<a href="{{ url(path=paginator.prev_url) }}">← Newer</a>{% endif %}
-  <span>Page {{ paginator.number }} of {{ paginator.total_pages }}</span>
-  {% if paginator.next_url %}<a href="{{ url(path=paginator.next_url) }}">Older →</a>{% endif %}
-</nav>
-{% endif %}
+<section class="page-head container">
+  <h1>{{ section.title }}</h1>
+  {% if section.description %}<p class="lead">{{ section.description }}</p>{% endif %}
+</section>
+{% if page.content %}<section class="container"><div class="prose intro">{{ page.content | safe }}</div></section>{% endif %}
+<section class="container section tight">
+  {% if section.subsections %}
+  <div class="grid posts">
+    {% for s in section.subsections %}<a class="card post-card" href="{{ url(path=s.url) }}"><h3>{{ s.title }}</h3>{% if s.description %}<p>{{ s.description }}</p>{% endif %}<span class="more">Browse {{ m::icon(name="arrow", size=14) | safe }}</span></a>{% endfor %}
+  </div>
+  {% endif %}
+  <div class="grid posts">
+    {% for p in section.pages %}
+    <a class="card post-card" href="{{ url(path=p.url) }}">
+      {% if p.date %}<time datetime="{{ p.date }}">{{ p.date | date(format="%b %e, %Y") }}</time>{% endif %}
+      <h3>{{ p.meta.title }}</h3>
+      {% if p.meta.description %}<p>{{ p.meta.description }}</p>{% endif %}
+      {% if p.meta.tags %}<span class="tags">{% for t in p.meta.tags %}<span class="tag">#{{ t }}</span>{% endfor %}</span>{% endif %}
+    </a>
+    {% endfor %}
+  </div>
+  {% if paginator.total_pages > 1 %}
+  <nav class="pagination" aria-label="Pagination">
+    {% if paginator.prev_url %}<a class="btn btn-secondary btn-sm" href="{{ url(path=paginator.prev_url) }}">← Newer</a>{% else %}<span></span>{% endif %}
+    <span class="muted">Page {{ paginator.number }} of {{ paginator.total_pages }}</span>
+    {% if paginator.next_url %}<a class="btn btn-secondary btn-sm" href="{{ url(path=paginator.next_url) }}">Older →</a>{% else %}<span></span>{% endif %}
+  </nav>
+  {% endif %}
+</section>
 {% endblock content %}

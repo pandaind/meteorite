@@ -55,3 +55,42 @@ theme before you trust it with a production site.
 Anything in your site's own `templates/` or `static/` directory wins over the theme's file of
 the same name. To change just the footer of `base.html`, copy that one file into
 `templates/` and edit it.
+
+## The home page
+
+The default theme builds the home page from front matter in `content/_index.md`. Every block is
+optional: `hero`, `stats`, `features`, `showcase`, `quote`, `latest` and `cta`. The page body
+(Markdown) is shown between the hero and the features.
+
+```yaml
+---
+title: Welcome
+hero:
+  eyebrow: Built with Meteorite
+  title: Your site, written in plain Markdown
+  subtitle: "Short supporting sentence."
+  command: cargo install meteorite     # shows a copy-able command
+  actions:
+    - { name: Get started, url: /guide/, style: primary, icon: rocket }
+    - { name: GitHub, url: "https://github.com/you/repo", style: secondary }
+stats:
+  - { value: "~1 s", label: "to build 10,000 pages" }
+features:
+  title: Why this
+  items:
+    - { icon: bolt, title: Fast, text: "One sentence, quoted if it has a comma." }
+cta:
+  title: Ready?
+  actions:
+    - { name: Start, url: /guide/ }
+---
+```
+
+Quote any value that contains a comma or a colon. Inside `{ ... }` an unquoted comma ends the
+value, so `text: fast, simple` would silently become `text: fast`.
+
+Available icons: `bolt`, `folder`, `palette`, `search`, `code`, `shield`, `rocket`, `globe`,
+`book`, `layers`, `check`, `arrow`, `download`, `play`, `copy`, `heart`, `star`.
+
+Header options live under `params:` in `config.yml`: `github_url`, `header_cta_text`,
+`header_cta_url`, `logo`, `og_image`, `footer_text`, plus the colour options above.
