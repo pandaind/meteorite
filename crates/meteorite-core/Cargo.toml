@@ -1,0 +1,28 @@
+[package]
+name = "meteorite-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Core library for the Meteorite static site generator"
+# The integration tests use fixtures that live in the CLI crate.
+exclude = ["tests/"]
+
+[features]
+default = []
+# Image resizing via the `resize_image` template function.
+images = ["dep:image"]
+
+[dependencies]
+serde.workspace = true
+serde_norway.workspace = true
+pulldown-cmark.workspace = true
+tera.workspace = true
+walkdir.workspace = true
+thiserror.workspace = true
+miette.workspace = true
+chrono.workspace = true
+syntect.workspace = true
+rayon.workspace = true
+image = { version = "0.25", optional = true, default-features = false, features = ["png", "jpeg", "gif", "webp"] }

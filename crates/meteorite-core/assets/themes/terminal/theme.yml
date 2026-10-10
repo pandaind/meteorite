@@ -1,0 +1,12 @@
+name: terminal
+version: 0.1.0
+description: Monospace, dark, minimal
+author: Meteorite
+meteorite_api: 1
+params:
+  prompt:
+    default: "$"
+    description: Prompt character shown before the site title
+  accent:
+    default: "#7ee787"
+    description: Accent colour

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+{{ page.content | safe }}
+{% set recent = get_pages(limit=5) %}
+{% if recent %}
+<h2>## recent</h2>
+<ul class="list">
+{% for p in recent %}<li><span class="dim">{% if p.date %}{{ p.date }}{% else %}----------{% endif %}</span> <a href="{{ url(path=p.url) }}">{{ p.meta.title }}</a></li>{% endfor %}
+</ul>
+{% endif %}
+{% endblock content %}

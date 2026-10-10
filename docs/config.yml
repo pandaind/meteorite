@@ -1,0 +1,22 @@
+title: Meteorite
+base_url: https://pandaind.github.io/meteorite/
+language: en
+theme: default
+
+params:
+  accent: "#d9480f"
+  footer_text: "Meteorite documentation. Built with Meteorite."
+
+menus:
+  main:
+    - { name: Docs, url: /guide/, weight: 1 }
+    - { name: Reference, url: /reference/, weight: 2 }
+    - { name: Themes, url: /themes/, weight: 3 }
+
+taxonomies: []
+feed:
+  enabled: false
+search:
+  enabled: true
+markdown:
+  highlight: true

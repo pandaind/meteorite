@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<article>
+  <h1>{{ page.meta.title }}</h1>
+  <p class="meta">
+    {% if page.date %}<time datetime="{{ page.date }}">{{ page.date }}</time> · {% endif %}{{ page.reading_time }} min read
+    {% if page.meta.tags %} · {% for tag in page.meta.tags %}{% set tag_slug = tag | slugify %}<a class="tag" href="{{ url(path='/tags/' ~ tag_slug ~ '/') }}">#{{ tag }}</a> {% endfor %}{% endif %}
+  </p>
+  {% if page.toc | length > 2 %}
+  <nav class="toc" aria-label="Contents">
+    <ul>{% for h in page.toc %}<li class="l{{ h.level }}"><a href="#{{ h.id }}">{{ h.title }}</a></li>{% endfor %}</ul>
+  </nav>
+  {% endif %}
+  {{ page.content | safe }}
+  <nav class="prev-next">
+    {% if page.prev %}<a href="{{ url(path=page.prev.url) }}">← {{ page.prev.title }}</a>{% endif %}
+    {% if page.next %}<a href="{{ url(path=page.next.url) }}">{{ page.next.title }} →</a>{% endif %}
+  </nav>
+</article>
+{% endblock content %}

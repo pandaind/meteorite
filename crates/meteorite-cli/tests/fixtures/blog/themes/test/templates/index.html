@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="home">{{ page.content | safe }}</div>
+<ul>{% for p in get_pages(limit=3) %}<li><a href="{{ p.url }}">{{ p.meta.title }}</a> {{ p.date }}</li>{% endfor %}</ul>
+<ul>{% for person in data.people %}<li>{{ person.name }}</li>{% endfor %}</ul>
+{% endblock content %}

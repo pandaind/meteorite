@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ taxonomy.name | title }}: {{ term.name }}</h1>
+<ul class="post-list">
+{% for p in pages %}
+  <li><a href="{{ url(path=p.url) }}">{{ p.meta.title }}</a>{% if p.date %} <time datetime="{{ p.date }}">{{ p.date }}</time>{% endif %}</li>
+{% endfor %}
+</ul>
+{% endblock content %}

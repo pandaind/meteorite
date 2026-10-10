@@ -1,0 +1,15 @@
+title: Fixture Site
+base_url: https://fixture.test/
+language: en
+theme: test
+params:
+  tagline: A site for golden tests
+menus:
+  main:
+    - { name: Blog, url: /blog/, weight: 2 }
+    - { name: Home, url: /, weight: 1 }
+taxonomies: [tags, categories]
+permalinks:
+  news: "/:year/:month/:slug/"
+search:
+  enabled: true

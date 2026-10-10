@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="{{ config.language }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if page.meta.title and page.url != "/" %}{{ page.meta.title }} | {% endif %}{{ config.title }}</title>
+  <link rel="stylesheet" href="{{ url(path='terminal.css') }}">
+  {% if config.feed.enabled %}<link rel="alternate" type="application/atom+xml" href="{{ url(path='atom.xml') }}">{% endif %}
+  <style>:root { --accent: {{ config.params.accent }}; }</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a href="{{ url(path='/') }}" class="title"><span class="prompt">{{ config.params.prompt }}</span> {{ config.title }}</a>
+    <nav>{% if config.menus.main %}{% for item in config.menus.main %}<a href="{{ url(path=item.url) }}">[{{ item.name | lower }}]</a>{% endfor %}{% endif %}</nav>
+  </header>
+  {% block content %}{% endblock content %}
+  <footer>-- end of file --</footer>
+</div>
+</body>
+</html>

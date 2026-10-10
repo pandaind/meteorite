@@ -1,0 +1,12 @@
+name: default
+version: 0.1.0
+description: Clean, readable starter theme
+author: Meteorite
+meteorite_api: 1
+params:
+  accent:
+    default: "#5b4de0"
+    description: Link and accent colour (any CSS colour)
+  footer_text:
+    default: ""
+    description: Optional text shown in the footer

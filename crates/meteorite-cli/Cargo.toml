@@ -1,0 +1,26 @@
+[package]
+name = "meteorite"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "A Hugo-style static site generator: Markdown content, YAML config, pluggable themes"
+keywords = ["static-site-generator", "markdown", "cms", "ssg"]
+categories = ["command-line-utilities", "web-programming"]
+
+[features]
+default = []
+images = ["meteorite-core/images"]
+
+[[bin]]
+name = "meteorite"
+path = "src/main.rs"
+
+[dependencies]
+meteorite-core = { path = "../meteorite-core", version = "0.1.0" }
+clap.workspace = true
+miette.workspace = true
+axum.workspace = true
+tokio.workspace = true
+notify.workspace = true

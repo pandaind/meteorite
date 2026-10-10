@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ section.title }}</h1>
+{{ page.content | safe }}
+<ul>{% for p in section.pages %}<li><a href="{{ p.url }}">{{ p.meta.title }}</a></li>{% endfor %}</ul>
+<p class="pager">page {{ paginator.number }} of {{ paginator.total_pages }}{% if paginator.prev_url %} prev={{ paginator.prev_url }}{% endif %}{% if paginator.next_url %} next={{ paginator.next_url }}{% endif %}</p>
+{% endblock content %}

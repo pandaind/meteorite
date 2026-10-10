@@ -1,0 +1,2 @@
+{% extends "base.html" %}
+{% block content %}<h1>{{ taxonomy.name }}</h1><ul>{% for t in terms %}<li><a href="{{ t.url }}">{{ t.name }}</a> ({{ t.count }})</li>{% endfor %}</ul>{% endblock content %}

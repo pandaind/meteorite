@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block content %}
+<h1># {{ taxonomy.name }}/{{ term.name }}</h1>
+<ul class="list">{% for p in pages %}<li><span class="dim">{% if p.date %}{{ p.date }}{% else %}----------{% endif %}</span> <a href="{{ url(path=p.url) }}">{{ p.meta.title }}</a></li>{% endfor %}</ul>
+{% endblock content %}

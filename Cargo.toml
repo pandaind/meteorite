@@ -1,0 +1,26 @@
+[workspace]
+resolver = "2"
+members = ["crates/meteorite-core", "crates/meteorite-cli"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/pandaind/meteorite"
+rust-version = "1.88"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_norway = "0.9"
+pulldown-cmark = "0.13"
+tera = "1"
+walkdir = "2"
+thiserror = "2"
+miette = { version = "7", features = ["fancy"] }
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+syntect = { version = "5", default-features = false, features = ["default-fancy"] }
+rayon = "1"
+clap = { version = "4", features = ["derive"] }
+axum = { version = "0.7", features = ["ws"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time", "fs"] }
+notify = "8"

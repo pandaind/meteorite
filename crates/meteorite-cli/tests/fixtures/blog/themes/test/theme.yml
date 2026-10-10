@@ -1,0 +1,8 @@
+name: test
+version: 1.0.0
+meteorite_api: 1
+params:
+  tagline:
+    required: true
+  color:
+    default: red

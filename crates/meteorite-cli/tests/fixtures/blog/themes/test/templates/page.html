@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<article>
+<h1>{{ page.meta.title }}</h1>
+<p class="stats">{{ page.word_count }} words, {{ page.reading_time }} min</p>
+{% if page.toc %}<ul class="toc">{% for h in page.toc %}<li class="l{{ h.level }}"><a href="#{{ h.id }}">{{ h.title }}</a></li>{% endfor %}</ul>{% endif %}
+{{ page.content | safe }}
+<p class="summary">{{ page.summary | safe }}</p>
+{% if page.prev %}<a rel="prev" href="{{ page.prev.url }}">{{ page.prev.title }}</a>{% endif %}
+{% if page.next %}<a rel="next" href="{{ page.next.url }}">{{ page.next.title }}</a>{% endif %}
+</article>
+{% endblock content %}

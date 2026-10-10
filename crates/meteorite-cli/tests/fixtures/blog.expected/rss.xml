@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0">
+<channel>
+  <title>Fixture Site</title>
+  <link>https://fixture.test/</link>
+  <description>Fixture Site</description>
+  <language>en</language>
+  <item>
+    <title>Launch Day</title>
+    <link>https://fixture.test/2026/05/launch/</link>
+    <guid>https://fixture.test/2026/05/launch/</guid>
+    <pubDate>Wed, 06 May 2026 00:00:00 +0000</pubDate>
+    <description>We launched.</description>
+  </item>
+  <item>
+    <title>Delta</title>
+    <link>https://fixture.test/blog/d/</link>
+    <guid>https://fixture.test/blog/d/</guid>
+    <pubDate>Wed, 01 Apr 2026 00:00:00 +0000</pubDate>
+    <description>Intro for Delta.</description>
+  </item>
+  <item>
+    <title>Gamma</title>
+    <link>https://fixture.test/blog/c/</link>
+    <guid>https://fixture.test/blog/c/</guid>
+    <pubDate>Sun, 01 Mar 2026 00:00:00 +0000</pubDate>
+    <description>Intro for Gamma.</description>
+  </item>
+  <item>
+    <title>Beta</title>
+    <link>https://fixture.test/blog/b/</link>
+    <guid>https://fixture.test/blog/b/</guid>
+    <pubDate>Sun, 01 Feb 2026 00:00:00 +0000</pubDate>
+    <description>Intro for Beta.</description>
+  </item>
+  <item>
+    <title>Alpha</title>
+    <link>https://fixture.test/blog/a/</link>
+    <guid>https://fixture.test/blog/a/</guid>
+    <pubDate>Thu, 01 Jan 2026 00:00:00 +0000</pubDate>
+    <description>Intro for Alpha.</description>
+  </item>
+</channel>
+</rss>

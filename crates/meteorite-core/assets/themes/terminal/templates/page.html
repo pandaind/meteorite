@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<article>
+  <h1># {{ page.meta.title }}</h1>
+  <p class="dim">{% if page.date %}{{ page.date }} | {% endif %}{{ page.word_count }} words{% if page.meta.tags %} | {% for tag in page.meta.tags %}{% set tag_slug = tag | slugify %}<a href="{{ url(path='/tags/' ~ tag_slug ~ '/') }}">#{{ tag }}</a> {% endfor %}{% endif %}</p>
+  {{ page.content | safe }}
+  <p class="dim">{% if page.prev %}<a href="{{ url(path=page.prev.url) }}">&lt; {{ page.prev.title }}</a>{% endif %} {% if page.next %}<a href="{{ url(path=page.next.url) }}">{{ page.next.title }} &gt;</a>{% endif %}</p>
+</article>
+{% endblock content %}

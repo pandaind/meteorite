@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="{{ config.language }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if page.meta.title and page.url != "/" %}{{ page.meta.title }} · {% endif %}{{ config.title }}</title>
+  {% if page.meta.description %}<meta name="description" content="{{ page.meta.description }}">{% endif %}
+  <link rel="stylesheet" href="{{ url(path='style.css') }}">
+  {% if config.feed.enabled %}<link rel="alternate" type="application/atom+xml" title="{{ config.title }}" href="{{ url(path='atom.xml') }}">{% endif %}
+  <style>:root { --accent: {{ config.params.accent }}; }</style>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="{{ url(path='/') }}">{{ config.title }}</a>
+    <nav>
+      {% if config.menus.main %}{% for item in config.menus.main %}<a href="{{ url(path=item.url) }}"{% if page.url == item.url %} aria-current="page"{% endif %}>{{ item.name }}</a>{% endfor %}{% endif %}
+    </nav>
+  </header>
+  <main>
+    {% block content %}{% endblock content %}
+  </main>
+  <footer class="site-footer">
+    {% if config.params.footer_text %}{{ config.params.footer_text }}{% else %}Built with Meteorite{% endif %}
+  </footer>
+</body>
+</html>

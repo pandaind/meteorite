@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Fixture Site</title>
+  <link href="https://fixture.test/atom.xml" rel="self"/>
+  <link href="https://fixture.test/"/>
+  <id>https://fixture.test/</id>
+  <updated>2026-05-06T00:00:00Z</updated>
+  <entry>
+    <title>Launch Day</title>
+    <link href="https://fixture.test/2026/05/launch/"/>
+    <id>https://fixture.test/2026/05/launch/</id>
+    <updated>2026-05-06T00:00:00Z</updated>
+    <summary>We launched.</summary>
+  </entry>
+  <entry>
+    <title>Delta</title>
+    <link href="https://fixture.test/blog/d/"/>
+    <id>https://fixture.test/blog/d/</id>
+    <updated>2026-04-01T00:00:00Z</updated>
+    <summary>Intro for Delta.</summary>
+  </entry>
+  <entry>
+    <title>Gamma</title>
+    <link href="https://fixture.test/blog/c/"/>
+    <id>https://fixture.test/blog/c/</id>
+    <updated>2026-03-01T00:00:00Z</updated>
+    <summary>Intro for Gamma.</summary>
+  </entry>
+  <entry>
+    <title>Beta</title>
+    <link href="https://fixture.test/blog/b/"/>
+    <id>https://fixture.test/blog/b/</id>
+    <updated>2026-02-01T00:00:00Z</updated>
+    <summary>Intro for Beta.</summary>
+  </entry>
+  <entry>
+    <title>Alpha</title>
+    <link href="https://fixture.test/blog/a/"/>
+    <id>https://fixture.test/blog/a/</id>
+    <updated>2026-01-01T00:00:00Z</updated>
+    <summary>Intro for Alpha.</summary>
+  </entry>
+</feed>

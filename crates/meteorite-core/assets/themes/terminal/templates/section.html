@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<h1># {{ section.title }}</h1>
+{{ page.content | safe }}
+<ul class="list">
+{% for s in section.subsections %}<li><a href="{{ url(path=s.url) }}">{{ s.title }}/</a></li>{% endfor %}
+{% for p in section.pages %}<li><span class="dim">{% if p.date %}{{ p.date }}{% else %}----------{% endif %}</span> <a href="{{ url(path=p.url) }}">{{ p.meta.title }}</a></li>{% endfor %}
+</ul>
+{% if paginator.total_pages > 1 %}
+<p class="dim">{% if paginator.prev_url %}<a href="{{ url(path=paginator.prev_url) }}">&lt; newer</a>{% endif %} page {{ paginator.number }}/{{ paginator.total_pages }} {% if paginator.next_url %}<a href="{{ url(path=paginator.next_url) }}">older &gt;</a>{% endif %}</p>
+{% endif %}
+{% endblock content %}
