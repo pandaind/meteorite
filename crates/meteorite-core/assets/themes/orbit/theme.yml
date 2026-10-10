@@ -1,0 +1,64 @@
+name: orbit
+version: 0.1.0
+description: Personal site theme for a profile, projects, blog, micro-blog notes, resume and social links
+author: Meteorite
+meteorite_api: 1
+skins:
+  - { name: ink, label: Ink, description: "Clean monochrome with a blue accent (the default look)" }
+  - { name: sunset, label: Sunset, description: "Warm coral and amber" }
+  - { name: mint, label: Mint, description: "Fresh green and teal" }
+params:
+  skin:
+    default: ink
+    description: Starting skin (see the skins list); visitors can switch with the style menu
+  skin_switcher:
+    default: false
+    description: Show the style menu in the header. Off by default because a personal site usually has one look
+  color_scheme:
+    default: auto
+    description: "Initial mode: auto (follow the OS), dark or light. Visitors can override with the toggle."
+  theme_toggle:
+    default: true
+    description: Show the light/dark toggle in the header
+  tagline:
+    default: ""
+    description: One line shown under your name in the header-less places (links page, sharing cards); falls back to the site description
+  avatar:
+    default: ""
+    description: Path under static/ of your photo or logo, shown on the home page, links page and header
+  location:
+    default: ""
+    description: Where you are based (shown on the home page and resume)
+  email:
+    default: ""
+    description: Public contact address, used for the "Email me" button and the resume
+  resume_pdf:
+    default: ""
+    description: Path under static/ of a PDF resume; adds a Download button to the resume page
+  blog_section:
+    default: blog
+    description: Section holding long-form posts (used by the home page and the feed link)
+  notes_section:
+    default: notes
+    description: Section holding micro-blog notes (short posts without a title)
+  projects_section:
+    default: projects
+    description: Section holding projects
+  reading_time:
+    default: true
+    description: Show the estimated reading time on posts
+  accent:
+    default: ""
+    description: Override the skin's accent in light mode (any CSS colour); empty uses the skin
+  accent_dark:
+    default: ""
+    description: Override the skin's accent in dark mode
+  favicon:
+    default: favicon.svg
+    description: "Path of the site icon, relative to the site root. A file of that name in your site's static/ overrides the theme's; set to an empty string for none"
+  og_image:
+    default: ""
+    description: Default social-sharing image (path under static/); pages can override with `image` in front matter
+  footer_text:
+    default: ""
+    description: Text shown in the footer (defaults to "© year name")

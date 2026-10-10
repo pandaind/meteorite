@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% import "macros.html" as m %}
+{% block content %}
+{#- A section picks its look from `layout:` in its _index.md: `list` (default, blog posts),
+    `projects` (cards), `notes` (a stream of short posts) or `archive` (titles only). -#}
+{% set layout = section.meta.layout | default(value="list") %}
+<section class="page-head container narrow">
+  <h1>{{ section.title }}</h1>
+  {% if section.description %}<p class="lead">{{ section.description }}</p>{% endif %}
+</section>
+{% if page.content %}<section class="container narrow"><div class="prose intro">{{ page.content | safe }}</div></section>{% endif %}
+<section class="container section tight{% if layout != 'projects' %} narrow{% endif %}">
+  {% if section.subsections %}
+  <div class="grid projects">
+    {% for s in section.subsections %}<a class="card project-card" href="{{ url(path=s.url) }}"><span class="card-body"><h3>{{ s.title }}</h3>{% if s.description %}<p>{{ s.description }}</p>{% endif %}<span class="more">Browse {{ m::icon(name="arrow", size=14) | safe }}</span></span></a>{% endfor %}
+  </div>
+  {% endif %}
+
+  {% if layout == "projects" %}
+  <div class="grid projects">{% for p in section.pages %}{{ m::project_card(p=p) }}{% endfor %}</div>
+
+  {% elif layout == "notes" %}
+  <div class="note-stream">{% for p in section.pages %}{{ m::note(p=p) }}{% endfor %}</div>
+
+  {% elif layout == "archive" %}
+  <ul class="archive" role="list">
+    {% for p in section.pages %}<li><span class="archive-date">{{ p.date | default(value="") }}</span><a href="{{ url(path=p.url) }}">{{ p.meta.title }}</a></li>{% endfor %}
+  </ul>
+
+  {% else %}
+  <div class="post-list">{% for p in section.pages %}{{ m::post_row(p=p, reading_time=config.params.reading_time) }}{% endfor %}</div>
+  {% endif %}
+
+  {% if paginator.total_pages > 1 %}
+  <nav class="pagination" aria-label="Pagination">
+    {% if paginator.prev_url %}<a class="btn btn-secondary btn-sm" href="{{ url(path=paginator.prev_url) }}">← Newer</a>{% else %}<span></span>{% endif %}
+    <span class="muted">Page {{ paginator.number }} of {{ paginator.total_pages }}</span>
+    {% if paginator.next_url %}<a class="btn btn-secondary btn-sm" href="{{ url(path=paginator.next_url) }}">Older →</a>{% else %}<span></span>{% endif %}
+  </nav>
+  {% endif %}
+</section>
+{% endblock content %}

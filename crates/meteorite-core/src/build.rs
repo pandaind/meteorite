@@ -633,7 +633,7 @@ fn section_view<'a>(
                 }
             })
             .collect(),
-        pages: page_slice.iter().map(|&i| site.all[i].light()).collect(),
+        pages: page_slice.iter().map(|&i| site.listing(i)).collect(),
         total_pages: sec.pages.len(),
     }
 }
@@ -653,7 +653,7 @@ fn register_site_fns(tera: &mut Tera, site: &Site, config: &Config) {
         let p = &site.all[i];
         pages.push((
             p.section.clone(),
-            tera::to_value(p.light()).unwrap_or(Value::Null),
+            tera::to_value(site.listing(i)).unwrap_or(Value::Null),
         ));
     }
     let mut section_pages = BTreeMap::new();
@@ -663,7 +663,7 @@ fn register_site_fns(tera: &mut Tera, site: &Site, config: &Config) {
             path.clone(),
             sec.pages
                 .iter()
-                .map(|&i| tera::to_value(site.all[i].light()).unwrap_or(Value::Null))
+                .map(|&i| tera::to_value(site.listing(i)).unwrap_or(Value::Null))
                 .collect::<Vec<_>>(),
         );
         let view = section_view(site, config, path, &[]);
@@ -978,7 +978,7 @@ fn render_job(
                 &term
                     .pages
                     .iter()
-                    .map(|&i| site.all[i].light())
+                    .map(|&i| site.listing(i))
                     .collect::<Vec<_>>(),
             );
             ctx.insert(

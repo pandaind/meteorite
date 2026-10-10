@@ -1577,3 +1577,40 @@ fn serve_previews_other_themes_without_touching_config() {
         config_before
     );
 }
+
+#[test]
+fn orbit_starter_builds_a_personal_site() {
+    let dir = tmp("orbit");
+    let site = dir.join("s");
+    ok(
+        &dir,
+        &["new", "site", site.to_str().unwrap(), "--theme", "orbit"],
+    );
+    ok(&site, &["build"]);
+    ok(&site, &["check"]);
+
+    // Home: profile, a project, a post and a note, plus structured data for search engines.
+    let home = read(&site, "index.html");
+    assert!(home.contains("hero-title") && home.contains("Selected work"));
+    assert!(home.contains("application/ld+json") && home.contains("\"@type\": \"Person\""));
+    assert!(home.contains("First project") && home.contains("Hello, world"));
+    assert!(
+        home.contains("note-item"),
+        "recent notes appear on the home page"
+    );
+
+    // Micro-blog: the whole note is in the listing, and untitled notes show no heading.
+    let notes = read(&site, "notes/index.html");
+    assert!(notes.contains("Write one in a minute"));
+    assert!(!notes.contains("note-title"));
+
+    // Resume and links pages render from data files and front matter.
+    let resume = read(&site, "resume/index.html");
+    assert!(resume.contains("Senior Engineer") && resume.contains("data-print"));
+    let links = read(&site, "links/index.html");
+    assert!(links.contains("link-btn") && links.contains("GitHub"));
+
+    // A project page uses the project layout.
+    let project = read(&site, "projects/first-project/index.html");
+    assert!(project.contains("project-facts") && project.contains("Rust"));
+}

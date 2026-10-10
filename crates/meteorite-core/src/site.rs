@@ -64,6 +64,10 @@ pub struct PageLight<'a> {
     pub word_count: usize,
     pub reading_time: usize,
     pub section: &'a str,
+    /// Only present for pages of a section that sets `full_content: true` in its `_index.md`
+    /// (micro-blog streams that show whole posts in the listing).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content: Option<&'a str>,
 }
 
 impl Page {
@@ -77,6 +81,15 @@ impl Page {
             word_count: self.word_count,
             reading_time: self.reading_time,
             section: &self.section,
+            content: None,
+        }
+    }
+
+    /// Like [`Page::light`] but with the rendered body, for sections that opt in.
+    pub fn light_full(&self) -> PageLight<'_> {
+        PageLight {
+            content: Some(&self.content),
+            ..self.light()
         }
     }
 
@@ -153,6 +166,25 @@ pub struct Site {
     pub skipped_drafts: usize,
     pub skipped_future: usize,
     pub skipped_expired: usize,
+}
+
+impl Site {
+    /// A page as it appears in a listing: without its body, unless the page's section sets
+    /// `full_content: true` in its `_index.md`.
+    pub fn listing(&self, i: usize) -> PageLight<'_> {
+        let page = &self.all[i];
+        let full = self
+            .sections
+            .get(&page.section)
+            .and_then(|s| s.meta.extra.get("full_content"))
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+        if full {
+            page.light_full()
+        } else {
+            page.light()
+        }
+    }
 }
 
 pub struct ModelOptions {

@@ -110,6 +110,84 @@ static DEFAULT: Bundled = Bundled {
     ],
 };
 
+static ORBIT: Bundled = Bundled {
+    name: "orbit",
+    files: &[
+        (
+            "static/favicon.svg",
+            include_str!("../assets/themes/orbit/static/favicon.svg"),
+        ),
+        (
+            "static/orbit.css",
+            include_str!("../assets/themes/orbit/static/orbit.css"),
+        ),
+        (
+            "static/orbit.js",
+            include_str!("../assets/themes/orbit/static/orbit.js"),
+        ),
+        (
+            "templates/404.html",
+            include_str!("../assets/themes/orbit/templates/404.html"),
+        ),
+        (
+            "templates/base.html",
+            include_str!("../assets/themes/orbit/templates/base.html"),
+        ),
+        (
+            "templates/index.html",
+            include_str!("../assets/themes/orbit/templates/index.html"),
+        ),
+        (
+            "templates/macros.html",
+            include_str!("../assets/themes/orbit/templates/macros.html"),
+        ),
+        (
+            "templates/page.html",
+            include_str!("../assets/themes/orbit/templates/page.html"),
+        ),
+        (
+            "templates/partials/links.html",
+            include_str!("../assets/themes/orbit/templates/partials/links.html"),
+        ),
+        (
+            "templates/partials/resume.html",
+            include_str!("../assets/themes/orbit/templates/partials/resume.html"),
+        ),
+        (
+            "templates/section.html",
+            include_str!("../assets/themes/orbit/templates/section.html"),
+        ),
+        (
+            "templates/shortcodes/button.html",
+            include_str!("../assets/themes/orbit/templates/shortcodes/button.html"),
+        ),
+        (
+            "templates/shortcodes/figure.html",
+            include_str!("../assets/themes/orbit/templates/shortcodes/figure.html"),
+        ),
+        (
+            "templates/shortcodes/note.html",
+            include_str!("../assets/themes/orbit/templates/shortcodes/note.html"),
+        ),
+        (
+            "templates/shortcodes/youtube.html",
+            include_str!("../assets/themes/orbit/templates/shortcodes/youtube.html"),
+        ),
+        (
+            "templates/taxonomy.html",
+            include_str!("../assets/themes/orbit/templates/taxonomy.html"),
+        ),
+        (
+            "templates/term.html",
+            include_str!("../assets/themes/orbit/templates/term.html"),
+        ),
+        (
+            "theme.yml",
+            include_str!("../assets/themes/orbit/theme.yml"),
+        ),
+    ],
+};
+
 static TERMINAL: Bundled = Bundled {
     name: "terminal",
     files: &[
@@ -180,7 +258,7 @@ static TERMINAL: Bundled = Bundled {
     ],
 };
 
-static ALL: &[&Bundled] = &[&DEFAULT, &TERMINAL];
+static ALL: &[&Bundled] = &[&DEFAULT, &ORBIT, &TERMINAL];
 
 pub fn find(name: &str) -> Option<&'static Bundled> {
     ALL.iter().copied().find(|b| b.name == name)

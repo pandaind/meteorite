@@ -110,6 +110,13 @@ without pagination has `total_pages == 1`.
 `templates/shortcodes/note.html` is invoked as `{{< note kind="warn" >}}...{{< /note >}}`.
 Arguments arrive as top-level variables and the Markdown body, already rendered, as `body`.
 
+### Listings that carry the whole post
+
+Listings leave out each page's body to stay fast. A section whose `_index.md` sets
+`full_content: true` is the exception: its pages carry `content` in `section.pages`,
+`get_pages()` and term pages, so a theme can show whole posts in a stream (a micro-blog). It is
+off by default; turn it on only for sections of short pages.
+
 ## Skins
 
 A theme can offer alternative looks that share its markup. Declare them in `theme.yml`:

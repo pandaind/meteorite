@@ -6,6 +6,13 @@ in a major release.
 
 ## [Unreleased]
 
+- New bundled theme `orbit` for personal sites: profile home page, projects, blog, micro-blog
+  notes, resume (from `data/resume.yml`, print-friendly), a links-in-bio page and social icons.
+  Light and dark modes, three skins, search, structured data. `meteorite new site --theme orbit`
+  creates a starter with sample content for every part
+- Themes: a section whose `_index.md` sets `full_content: true` puts each page's rendered
+  `content` in `section.pages`, `get_pages()` and term pages (for micro-blog streams)
+
 ## [0.4.0]
 
 - Chat: new `chat.welcome` option sets the first line shown in the chat window. Without it the

@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head container narrow"><h1>{{ taxonomy.name | title }}</h1></section>
+<section class="container narrow section tight"><ul class="chips" role="list">
+{% for t in terms %}<li><a class="chip" href="{{ url(path=t.url) }}">{{ t.name }} <span class="count">{{ t.count }}</span></a></li>{% endfor %}
+</ul></section>
+{% endblock content %}
