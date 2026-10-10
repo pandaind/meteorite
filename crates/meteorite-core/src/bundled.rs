@@ -43,296 +43,92 @@ impl Bundled {
 static DEFAULT: Bundled = Bundled {
     name: "default",
     files: &[
-        (
-            "static/app.js",
-            include_str!("../assets/themes/default/static/app.js"),
-        ),
-        (
-            "static/favicon.svg",
-            include_str!("../assets/themes/default/static/favicon.svg"),
-        ),
-        (
-            "static/style.css",
-            include_str!("../assets/themes/default/static/style.css"),
-        ),
-        (
-            "templates/404.html",
-            include_str!("../assets/themes/default/templates/404.html"),
-        ),
-        (
-            "templates/base.html",
-            include_str!("../assets/themes/default/templates/base.html"),
-        ),
-        (
-            "templates/index.html",
-            include_str!("../assets/themes/default/templates/index.html"),
-        ),
-        (
-            "templates/macros.html",
-            include_str!("../assets/themes/default/templates/macros.html"),
-        ),
-        (
-            "templates/page.html",
-            include_str!("../assets/themes/default/templates/page.html"),
-        ),
-        (
-            "templates/partials/sky.html",
-            include_str!("../assets/themes/default/templates/partials/sky.html"),
-        ),
-        (
-            "templates/section.html",
-            include_str!("../assets/themes/default/templates/section.html"),
-        ),
-        (
-            "templates/shortcodes/button.html",
-            include_str!("../assets/themes/default/templates/shortcodes/button.html"),
-        ),
-        (
-            "templates/shortcodes/note.html",
-            include_str!("../assets/themes/default/templates/shortcodes/note.html"),
-        ),
-        (
-            "templates/shortcodes/youtube.html",
-            include_str!("../assets/themes/default/templates/shortcodes/youtube.html"),
-        ),
-        (
-            "templates/taxonomy.html",
-            include_str!("../assets/themes/default/templates/taxonomy.html"),
-        ),
-        (
-            "templates/term.html",
-            include_str!("../assets/themes/default/templates/term.html"),
-        ),
-        (
-            "theme.yml",
-            include_str!("../assets/themes/default/theme.yml"),
-        ),
+        ("static/app.js", include_str!("../assets/themes/default/static/app.js")),
+        ("static/favicon.svg", include_str!("../assets/themes/default/static/favicon.svg")),
+        ("static/style.css", include_str!("../assets/themes/default/static/style.css")),
+        ("templates/404.html", include_str!("../assets/themes/default/templates/404.html")),
+        ("templates/base.html", include_str!("../assets/themes/default/templates/base.html")),
+        ("templates/index.html", include_str!("../assets/themes/default/templates/index.html")),
+        ("templates/macros.html", include_str!("../assets/themes/default/templates/macros.html")),
+        ("templates/page.html", include_str!("../assets/themes/default/templates/page.html")),
+        ("templates/partials/sky.html", include_str!("../assets/themes/default/templates/partials/sky.html")),
+        ("templates/section.html", include_str!("../assets/themes/default/templates/section.html")),
+        ("templates/shortcodes/button.html", include_str!("../assets/themes/default/templates/shortcodes/button.html")),
+        ("templates/shortcodes/note.html", include_str!("../assets/themes/default/templates/shortcodes/note.html")),
+        ("templates/shortcodes/youtube.html", include_str!("../assets/themes/default/templates/shortcodes/youtube.html")),
+        ("templates/taxonomy.html", include_str!("../assets/themes/default/templates/taxonomy.html")),
+        ("templates/term.html", include_str!("../assets/themes/default/templates/term.html")),
+        ("theme.yml", include_str!("../assets/themes/default/theme.yml")),
     ],
 };
 
 static DEVLOG: Bundled = Bundled {
     name: "devlog",
     files: &[
-        (
-            "static/devlog.css",
-            include_str!("../assets/themes/devlog/static/devlog.css"),
-        ),
-        (
-            "static/devlog.js",
-            include_str!("../assets/themes/devlog/static/devlog.js"),
-        ),
-        (
-            "static/favicon.svg",
-            include_str!("../assets/themes/devlog/static/favicon.svg"),
-        ),
-        (
-            "templates/404.html",
-            include_str!("../assets/themes/devlog/templates/404.html"),
-        ),
-        (
-            "templates/base.html",
-            include_str!("../assets/themes/devlog/templates/base.html"),
-        ),
-        (
-            "templates/index.html",
-            include_str!("../assets/themes/devlog/templates/index.html"),
-        ),
-        (
-            "templates/macros.html",
-            include_str!("../assets/themes/devlog/templates/macros.html"),
-        ),
-        (
-            "templates/page.html",
-            include_str!("../assets/themes/devlog/templates/page.html"),
-        ),
-        (
-            "templates/partials/links.html",
-            include_str!("../assets/themes/devlog/templates/partials/links.html"),
-        ),
-        (
-            "templates/partials/resume.html",
-            include_str!("../assets/themes/devlog/templates/partials/resume.html"),
-        ),
-        (
-            "templates/section.html",
-            include_str!("../assets/themes/devlog/templates/section.html"),
-        ),
-        (
-            "templates/shortcodes/button.html",
-            include_str!("../assets/themes/devlog/templates/shortcodes/button.html"),
-        ),
-        (
-            "templates/shortcodes/figure.html",
-            include_str!("../assets/themes/devlog/templates/shortcodes/figure.html"),
-        ),
-        (
-            "templates/shortcodes/note.html",
-            include_str!("../assets/themes/devlog/templates/shortcodes/note.html"),
-        ),
-        (
-            "templates/shortcodes/youtube.html",
-            include_str!("../assets/themes/devlog/templates/shortcodes/youtube.html"),
-        ),
-        (
-            "templates/taxonomy.html",
-            include_str!("../assets/themes/devlog/templates/taxonomy.html"),
-        ),
-        (
-            "templates/term.html",
-            include_str!("../assets/themes/devlog/templates/term.html"),
-        ),
-        (
-            "theme.yml",
-            include_str!("../assets/themes/devlog/theme.yml"),
-        ),
+        ("static/devlog.css", include_str!("../assets/themes/devlog/static/devlog.css")),
+        ("static/devlog.js", include_str!("../assets/themes/devlog/static/devlog.js")),
+        ("static/favicon.svg", include_str!("../assets/themes/devlog/static/favicon.svg")),
+        ("templates/404.html", include_str!("../assets/themes/devlog/templates/404.html")),
+        ("templates/base.html", include_str!("../assets/themes/devlog/templates/base.html")),
+        ("templates/index.html", include_str!("../assets/themes/devlog/templates/index.html")),
+        ("templates/macros.html", include_str!("../assets/themes/devlog/templates/macros.html")),
+        ("templates/page.html", include_str!("../assets/themes/devlog/templates/page.html")),
+        ("templates/partials/links.html", include_str!("../assets/themes/devlog/templates/partials/links.html")),
+        ("templates/partials/resume.html", include_str!("../assets/themes/devlog/templates/partials/resume.html")),
+        ("templates/section.html", include_str!("../assets/themes/devlog/templates/section.html")),
+        ("templates/shortcodes/button.html", include_str!("../assets/themes/devlog/templates/shortcodes/button.html")),
+        ("templates/shortcodes/figure.html", include_str!("../assets/themes/devlog/templates/shortcodes/figure.html")),
+        ("templates/shortcodes/note.html", include_str!("../assets/themes/devlog/templates/shortcodes/note.html")),
+        ("templates/shortcodes/youtube.html", include_str!("../assets/themes/devlog/templates/shortcodes/youtube.html")),
+        ("templates/taxonomy.html", include_str!("../assets/themes/devlog/templates/taxonomy.html")),
+        ("templates/term.html", include_str!("../assets/themes/devlog/templates/term.html")),
+        ("theme.yml", include_str!("../assets/themes/devlog/theme.yml")),
     ],
 };
 
 static ORBIT: Bundled = Bundled {
     name: "orbit",
     files: &[
-        (
-            "static/favicon.svg",
-            include_str!("../assets/themes/orbit/static/favicon.svg"),
-        ),
-        (
-            "static/orbit.css",
-            include_str!("../assets/themes/orbit/static/orbit.css"),
-        ),
-        (
-            "static/orbit.js",
-            include_str!("../assets/themes/orbit/static/orbit.js"),
-        ),
-        (
-            "templates/404.html",
-            include_str!("../assets/themes/orbit/templates/404.html"),
-        ),
-        (
-            "templates/base.html",
-            include_str!("../assets/themes/orbit/templates/base.html"),
-        ),
-        (
-            "templates/index.html",
-            include_str!("../assets/themes/orbit/templates/index.html"),
-        ),
-        (
-            "templates/macros.html",
-            include_str!("../assets/themes/orbit/templates/macros.html"),
-        ),
-        (
-            "templates/page.html",
-            include_str!("../assets/themes/orbit/templates/page.html"),
-        ),
-        (
-            "templates/partials/links.html",
-            include_str!("../assets/themes/orbit/templates/partials/links.html"),
-        ),
-        (
-            "templates/partials/resume.html",
-            include_str!("../assets/themes/orbit/templates/partials/resume.html"),
-        ),
-        (
-            "templates/section.html",
-            include_str!("../assets/themes/orbit/templates/section.html"),
-        ),
-        (
-            "templates/shortcodes/button.html",
-            include_str!("../assets/themes/orbit/templates/shortcodes/button.html"),
-        ),
-        (
-            "templates/shortcodes/figure.html",
-            include_str!("../assets/themes/orbit/templates/shortcodes/figure.html"),
-        ),
-        (
-            "templates/shortcodes/note.html",
-            include_str!("../assets/themes/orbit/templates/shortcodes/note.html"),
-        ),
-        (
-            "templates/shortcodes/youtube.html",
-            include_str!("../assets/themes/orbit/templates/shortcodes/youtube.html"),
-        ),
-        (
-            "templates/taxonomy.html",
-            include_str!("../assets/themes/orbit/templates/taxonomy.html"),
-        ),
-        (
-            "templates/term.html",
-            include_str!("../assets/themes/orbit/templates/term.html"),
-        ),
-        (
-            "theme.yml",
-            include_str!("../assets/themes/orbit/theme.yml"),
-        ),
+        ("static/favicon.svg", include_str!("../assets/themes/orbit/static/favicon.svg")),
+        ("static/orbit.css", include_str!("../assets/themes/orbit/static/orbit.css")),
+        ("static/orbit.js", include_str!("../assets/themes/orbit/static/orbit.js")),
+        ("templates/404.html", include_str!("../assets/themes/orbit/templates/404.html")),
+        ("templates/base.html", include_str!("../assets/themes/orbit/templates/base.html")),
+        ("templates/index.html", include_str!("../assets/themes/orbit/templates/index.html")),
+        ("templates/macros.html", include_str!("../assets/themes/orbit/templates/macros.html")),
+        ("templates/page.html", include_str!("../assets/themes/orbit/templates/page.html")),
+        ("templates/partials/links.html", include_str!("../assets/themes/orbit/templates/partials/links.html")),
+        ("templates/partials/resume.html", include_str!("../assets/themes/orbit/templates/partials/resume.html")),
+        ("templates/section.html", include_str!("../assets/themes/orbit/templates/section.html")),
+        ("templates/shortcodes/button.html", include_str!("../assets/themes/orbit/templates/shortcodes/button.html")),
+        ("templates/shortcodes/figure.html", include_str!("../assets/themes/orbit/templates/shortcodes/figure.html")),
+        ("templates/shortcodes/note.html", include_str!("../assets/themes/orbit/templates/shortcodes/note.html")),
+        ("templates/shortcodes/youtube.html", include_str!("../assets/themes/orbit/templates/shortcodes/youtube.html")),
+        ("templates/taxonomy.html", include_str!("../assets/themes/orbit/templates/taxonomy.html")),
+        ("templates/term.html", include_str!("../assets/themes/orbit/templates/term.html")),
+        ("theme.yml", include_str!("../assets/themes/orbit/theme.yml")),
     ],
 };
 
 static TERMINAL: Bundled = Bundled {
     name: "terminal",
     files: &[
-        (
-            "static/app.js",
-            include_str!("../assets/themes/terminal/static/app.js"),
-        ),
-        (
-            "static/favicon.svg",
-            include_str!("../assets/themes/terminal/static/favicon.svg"),
-        ),
-        (
-            "static/terminal.css",
-            include_str!("../assets/themes/terminal/static/terminal.css"),
-        ),
-        (
-            "templates/404.html",
-            include_str!("../assets/themes/terminal/templates/404.html"),
-        ),
-        (
-            "templates/base.html",
-            include_str!("../assets/themes/terminal/templates/base.html"),
-        ),
-        (
-            "templates/index.html",
-            include_str!("../assets/themes/terminal/templates/index.html"),
-        ),
-        (
-            "templates/macros.html",
-            include_str!("../assets/themes/terminal/templates/macros.html"),
-        ),
-        (
-            "templates/page.html",
-            include_str!("../assets/themes/terminal/templates/page.html"),
-        ),
-        (
-            "templates/partials/sky.html",
-            include_str!("../assets/themes/terminal/templates/partials/sky.html"),
-        ),
-        (
-            "templates/section.html",
-            include_str!("../assets/themes/terminal/templates/section.html"),
-        ),
-        (
-            "templates/shortcodes/button.html",
-            include_str!("../assets/themes/terminal/templates/shortcodes/button.html"),
-        ),
-        (
-            "templates/shortcodes/note.html",
-            include_str!("../assets/themes/terminal/templates/shortcodes/note.html"),
-        ),
-        (
-            "templates/shortcodes/youtube.html",
-            include_str!("../assets/themes/terminal/templates/shortcodes/youtube.html"),
-        ),
-        (
-            "templates/taxonomy.html",
-            include_str!("../assets/themes/terminal/templates/taxonomy.html"),
-        ),
-        (
-            "templates/term.html",
-            include_str!("../assets/themes/terminal/templates/term.html"),
-        ),
-        (
-            "theme.yml",
-            include_str!("../assets/themes/terminal/theme.yml"),
-        ),
+        ("static/app.js", include_str!("../assets/themes/terminal/static/app.js")),
+        ("static/favicon.svg", include_str!("../assets/themes/terminal/static/favicon.svg")),
+        ("static/terminal.css", include_str!("../assets/themes/terminal/static/terminal.css")),
+        ("templates/404.html", include_str!("../assets/themes/terminal/templates/404.html")),
+        ("templates/base.html", include_str!("../assets/themes/terminal/templates/base.html")),
+        ("templates/index.html", include_str!("../assets/themes/terminal/templates/index.html")),
+        ("templates/macros.html", include_str!("../assets/themes/terminal/templates/macros.html")),
+        ("templates/page.html", include_str!("../assets/themes/terminal/templates/page.html")),
+        ("templates/partials/sky.html", include_str!("../assets/themes/terminal/templates/partials/sky.html")),
+        ("templates/section.html", include_str!("../assets/themes/terminal/templates/section.html")),
+        ("templates/shortcodes/button.html", include_str!("../assets/themes/terminal/templates/shortcodes/button.html")),
+        ("templates/shortcodes/note.html", include_str!("../assets/themes/terminal/templates/shortcodes/note.html")),
+        ("templates/shortcodes/youtube.html", include_str!("../assets/themes/terminal/templates/shortcodes/youtube.html")),
+        ("templates/taxonomy.html", include_str!("../assets/themes/terminal/templates/taxonomy.html")),
+        ("templates/term.html", include_str!("../assets/themes/terminal/templates/term.html")),
+        ("theme.yml", include_str!("../assets/themes/terminal/theme.yml")),
     ],
 };
 
@@ -378,10 +174,6 @@ mod tests {
             );
         }
         let dirs = fs::read_dir(&base).unwrap().count();
-        assert_eq!(
-            dirs,
-            ALL.len(),
-            "a theme directory is missing from bundled.rs"
-        );
+        assert_eq!(dirs, ALL.len(), "a theme directory is missing from bundled.rs");
     }
 }
