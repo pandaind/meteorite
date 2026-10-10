@@ -143,7 +143,8 @@ a.chip:hover { border-color: var(--accent); }
 .repo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: .9rem; }
 .repo-card { position: relative; display: flex; flex-direction: column; gap: .5rem; padding: 1rem 1.1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); color: var(--text); text-decoration: none; transition: border-color .15s, box-shadow .15s; min-height: 7rem; }
 .repo-card:hover { border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
-.repo-head { display: flex; align-items: center; gap: .5rem; color: var(--muted); }
+.repo-head { display: flex; align-items: flex-start; gap: .5rem; color: var(--muted); }
+.repo-head svg { flex: none; margin-top: .22rem; }
 .repo-head strong { color: var(--accent); font-weight: 600; word-break: break-word; }
 .repo-year { margin-left: auto; font: .8rem var(--mono); }
 .repo-desc { color: var(--muted); font-size: .92rem; }
