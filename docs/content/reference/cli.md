@@ -23,6 +23,7 @@ Every command accepts `-r, --root <DIR>` to operate on a site other than the cur
 | `--drafts` | Include `draft: true` pages. |
 | `--future` | Include pages dated in the future. |
 | `--minify` | Minify HTML and CSS. |
+| `--theme <name>` | Use this installed theme instead of the one in `config.yml`. |
 | `--base-url <url>` | Override `base_url`. |
 | `-o, --output <dir>` | Write somewhere other than `public/`. |
 
@@ -38,6 +39,8 @@ it refuses to use the site root or any of its parents.
 | `--bind` | `127.0.0.1` | Address. Use `0.0.0.0` to reach it from another device. |
 | `--open` | off | Open a browser. |
 | `--drafts`, `--future` | off | As for `build`. |
+| `--theme <name>` | from config | Start with this theme. |
 
-While serving, `base_url` is replaced with the local address so links stay on your machine.
+With two or more themes installed, a theme picker appears in the corner of every page (dev
+server only); see [Using themes](/themes/using/). While serving, `base_url` is replaced with the local address so links stay on your machine.
 Only `content/`, `static/`, `templates/`, `themes/`, `data/` and `config.yml` are watched.

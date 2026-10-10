@@ -1,5 +1,5 @@
 {% import "macros.html" as m %}<!doctype html>
-<html lang="{{ config.language }}"{% if config.params.color_scheme == "light" or config.params.color_scheme == "dark" %} data-theme="{{ config.params.color_scheme }}"{% endif %}>
+<html lang="{{ config.language }}"{% if config.params.color_scheme == "light" or config.params.color_scheme == "dark" %} data-theme="{{ config.params.color_scheme }}"{% endif %}{% if config.params.skin %} data-skin="{{ config.params.skin }}"{% endif %} data-default-skin="{{ config.params.skin }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -16,7 +16,8 @@
   {% if page.meta.image %}<meta property="og:image" content="{{ url(path=page.meta.image) }}">{% elif config.params.og_image %}<meta property="og:image" content="{{ url(path=config.params.og_image) }}">{% endif %}
   <meta name="twitter:card" content="{% if page.meta.image or config.params.og_image %}summary_large_image{% else %}summary{% endif %}">
   <meta name="theme-color" content="#06070f">
-  <script>try{var m=localStorage.getItem("meteorite-theme");if(m==="light"||m==="dark")document.documentElement.setAttribute("data-theme",m)}catch(e){}</script>
+  {% set skin_names = theme.skins | map(attribute="name") %}
+  <script>try{var d=document.documentElement,m=localStorage.getItem("meteorite-theme"),k=localStorage.getItem("meteorite-skin"),ok={{ skin_names | json_encode | safe }};if(m==="light"||m==="dark")d.setAttribute("data-theme",m);if(k&&ok.indexOf(k)>-1)d.setAttribute("data-skin",k)}catch(e){}</script>
   <style>:root{--accent-light:{{ config.params.accent }};--accent-dark:{{ config.params.accent_dark }}}</style>
   <link rel="stylesheet" href="{{ url(path='style.css') }}">
   <link rel="stylesheet" href="{{ url(path='highlight.css') }}">
@@ -36,6 +37,12 @@
       </nav>
       <div class="header-tools">
         {% if config.params.github_url %}<a class="icon-btn" href="{{ config.params.github_url }}" aria-label="GitHub repository" rel="noopener">{{ m::github() | safe }}</a>{% endif %}
+        {% if config.params.skin_switcher and theme.skins | length > 1 %}<details class="skin-menu">
+          <summary class="icon-btn" aria-label="Choose a style" title="Choose a style">{{ m::icon(name="palette") | safe }}</summary>
+          <ul class="skin-list" role="menu" aria-label="Style">
+            {% for s in theme.skins %}<li role="none"><button type="button" role="menuitemradio" aria-checked="false" data-skin-set="{{ s.name }}">{{ s.label }}</button></li>{% endfor %}
+          </ul>
+        </details>{% endif %}
         {% if config.search.enabled %}<button id="search-open" class="icon-btn search-open" type="button" hidden aria-label="Search" aria-keyshortcuts="/" title="Search (/)">{{ m::icon(name="search") | safe }}</button>{% endif %}
         {% if config.params.theme_toggle %}<button id="theme-toggle" class="icon-btn theme-toggle" type="button" hidden aria-label="Switch colour mode">
           <span class="i-sun">{{ m::icon(name="sun") | safe }}</span><span class="i-moon">{{ m::icon(name="moon") | safe }}</span>

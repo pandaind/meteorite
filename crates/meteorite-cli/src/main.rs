@@ -77,6 +77,9 @@ struct BuildFlags {
     /// Include pages dated in the future
     #[arg(long)]
     future: bool,
+    /// Use this installed theme instead of the one in config.yml
+    #[arg(long, value_name = "NAME")]
+    theme: Option<String>,
 }
 
 #[derive(Subcommand)]
@@ -115,6 +118,7 @@ fn options(flags: &BuildFlags) -> BuildOptions {
     BuildOptions {
         drafts: flags.drafts,
         future: flags.future,
+        theme: flags.theme.clone(),
         ..Default::default()
     }
 }

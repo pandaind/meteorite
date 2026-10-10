@@ -27,6 +27,19 @@ pub struct ThemeManifest {
     pub meteorite_api: u32,
     #[serde(default)]
     pub params: BTreeMap<String, ParamSpec>,
+    /// Named palettes the theme can switch between without changing its markup.
+    #[serde(default)]
+    pub skins: Vec<SkinSpec>,
+}
+
+/// A skin: a named look inside one theme. The theme applies it with a `data-skin` attribute.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SkinSpec {
+    pub name: String,
+    #[serde(default)]
+    pub label: String,
+    #[serde(default)]
+    pub description: String,
 }
 
 fn default_api() -> u32 {
@@ -73,11 +86,35 @@ impl Theme {
             });
         }
         check_name(&manifest.name)?;
+        let mut seen = std::collections::BTreeSet::new();
+        for skin in &manifest.skins {
+            if check_name(&skin.name).is_err() || skin.name != skin.name.to_ascii_lowercase() {
+                return Err(Error::ThemeInvalid {
+                    theme: manifest.name.clone(),
+                    reason: format!(
+                        "skin name `{}` must be lowercase letters, digits, `-` or `_`",
+                        skin.name
+                    ),
+                });
+            }
+            if !seen.insert(skin.name.clone()) {
+                return Err(Error::ThemeInvalid {
+                    theme: manifest.name.clone(),
+                    reason: format!("skin `{}` is declared twice", skin.name),
+                });
+            }
+        }
         if !dir.join("templates").is_dir() {
             return Err(Error::ThemeInvalid {
                 theme: manifest.name,
                 reason: "missing templates/ directory".into(),
             });
+        }
+        let mut manifest = manifest;
+        for skin in &mut manifest.skins {
+            if skin.label.is_empty() {
+                skin.label = crate::util::humanize(&skin.name);
+            }
         }
         Ok(Theme {
             dir: dir.to_path_buf(),
@@ -290,4 +327,43 @@ fn copy_tree(from: &Path, to: &Path) -> Result<()> {
         // Symlinks are skipped on purpose: a theme must not smuggle in links to elsewhere.
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    fn theme_dir(name: &str, yml: &str) -> PathBuf {
+        let d = std::env::temp_dir().join(format!("meteorite-theme-{name}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&d);
+        fs::create_dir_all(d.join("templates")).unwrap();
+        fs::write(d.join("theme.yml"), yml).unwrap();
+        d
+    }
+
+    #[test]
+    fn skins_are_parsed_and_labelled() {
+        let d = theme_dir(
+            "ok",
+            "name: t\nskins:\n  - { name: paper, label: Paper }\n  - { name: deep-blue }\n",
+        );
+        let t = Theme::load(&d).unwrap();
+        assert_eq!(t.manifest.skins[0].label, "Paper");
+        assert_eq!(t.manifest.skins[1].label, "Deep blue");
+        let _ = fs::remove_dir_all(d);
+    }
+
+    #[test]
+    fn bad_skins_are_rejected() {
+        for (n, yml) in [
+            ("dup", "name: t\nskins:\n  - { name: a }\n  - { name: a }\n"),
+            ("caps", "name: t\nskins:\n  - { name: Paper }\n"),
+            ("path", "name: t\nskins:\n  - { name: \"../x\" }\n"),
+        ] {
+            let d = theme_dir(n, yml);
+            assert!(Theme::load(&d).is_err(), "{n}");
+            let _ = fs::remove_dir_all(d);
+        }
+    }
 }

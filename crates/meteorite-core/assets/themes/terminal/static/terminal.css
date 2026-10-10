@@ -304,6 +304,26 @@ a.tag:hover { color: var(--accent); }
 .search-status { margin: 0; padding: .55rem 1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .82rem; }
 .search-open[hidden] { display: none; }
 
+/* ---------- skins ----------
+   A skin changes the accent colours; the layout is untouched. "green" is the base look. */
+:root[data-skin="amber"] { --accent-dark: #ffb000; --accent-light: #9a5b00; --accent-2: #ff7b00; --prompt: #ffb000;
+  --glow: rgba(255,176,0,.16); --note-bg: rgba(255,176,0,.08); }
+:root[data-skin="mono"] { --accent-dark: #e6edf3; --accent-light: #0d1117; --accent-2: #8b949e; --prompt: #8b949e;
+  --glow: rgba(230,237,243,.09); --note-bg: rgba(230,237,243,.06); }
+
+/* ---------- style (skin) menu ---------- */
+.skin-menu { position: relative; }
+.skin-menu summary { list-style: none; }
+.skin-menu summary::-webkit-details-marker { display: none; }
+.skin-list { position: absolute; right: 0; top: calc(100% + .4rem); z-index: 60; min-width: 10.5rem; margin: 0; padding: .35rem;
+  list-style: none; background: var(--bg-elev); border: 1px solid var(--line-strong); border-radius: var(--radius); box-shadow: var(--shadow); }
+.skin-list button { display: flex; align-items: center; gap: .5rem; width: 100%; padding: .5rem .7rem; text-align: left;
+  font: inherit; font-size: .92rem; color: var(--fg); background: none; border: 0; border-radius: 6px; cursor: pointer; }
+.skin-list button::before { content: ""; display: inline-block; width: 1em; }
+.skin-list button:hover { background: var(--surface); }
+.skin-list button[aria-checked="true"] { color: var(--accent); font-weight: 600; }
+.skin-list button[aria-checked="true"]::before { content: "\2713"; }
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .meteor, .stars, .stars::after { animation: none; }

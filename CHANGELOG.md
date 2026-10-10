@@ -6,6 +6,14 @@ in a major release.
 
 ## [Unreleased]
 
+- Theme switching. `--theme <name>` on `build`, `serve` and `check` overrides the theme in
+  `config.yml`. While serving, a dev-only picker re-renders the same URL under any installed
+  theme and rebuilds every theme you have looked at on change
+- Skins: a theme can declare named palettes in `theme.yml`; visitors choose one from a header
+  menu and the choice is remembered. `default` ships `meteor`, `paper` and `aurora`; `terminal`
+  ships `green`, `amber` and `mono`. New params `skin` and `skin_switcher`; templates get a
+  `theme` object (`name`, `version`, `skins`). An unknown skin name is a warning
+
 - Search: both bundled themes add a search dialog (press `/` or Ctrl+K, or use the header
   button) when `search.enabled: true`. Ranked results with highlighted matches; the index is
   fetched on first use. `new site` enables it

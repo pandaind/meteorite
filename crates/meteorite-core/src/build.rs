@@ -33,6 +33,8 @@ pub struct BuildOptions {
     pub minify: Option<bool>,
     /// Override `base_url` (used by `serve` and `check`).
     pub base_url: Option<String>,
+    /// Build with this installed theme instead of the one in `config.yml`.
+    pub theme: Option<String>,
     /// Write somewhere other than `<root>/public`.
     pub out_dir: Option<PathBuf>,
     /// Treat this as today's date (for tests).
@@ -121,6 +123,10 @@ impl Builder {
         if let Some(m) = opts.minify {
             config.build.minify = m;
         }
+        if let Some(t) = &opts.theme {
+            crate::theme::check_name(t)?;
+            config.theme = t.clone();
+        }
         let drafts = opts.drafts || config.build.drafts;
         let future = opts.future || config.build.future;
 
@@ -130,6 +136,25 @@ impl Builder {
         }
         let theme = Theme::load(&theme_dir)?;
         theme.resolve_params(&mut config.params)?;
+        if let Some(serde_norway::Value::String(skin)) = config.params.get("skin") {
+            let known: Vec<&str> = theme
+                .manifest
+                .skins
+                .iter()
+                .map(|s| s.name.as_str())
+                .collect();
+            if !skin.is_empty() && !known.contains(&skin.as_str()) {
+                warnings.push(format!(
+                    "params.skin `{skin}` is not a skin of theme `{}` (available: {})",
+                    theme.manifest.name,
+                    if known.is_empty() {
+                        "none".to_string()
+                    } else {
+                        known.join(", ")
+                    }
+                ));
+            }
+        }
 
         let out_dir = opts.out_dir.clone().unwrap_or_else(|| root.join("public"));
         let first_build = self.last_out_dir.as_deref() != Some(out_dir.as_path());
@@ -229,6 +254,7 @@ impl Builder {
         let mut base = Context::new();
         base.insert("config", &config);
         base.insert("data", &data);
+        base.insert("theme", &theme.manifest);
         base.insert(
             "meteorite",
             &MeteoriteInfo {

@@ -60,6 +60,7 @@ Available in every template:
 | `config` | object | The merged site config. `config.params` includes theme defaults. |
 | `data` | object | Contents of `data/*.yml`, keyed by file name. |
 | `meteorite.version` | string | |
+| `theme` | object | The active theme's manifest: `name`, `version`, `skins`, `params`. |
 | `page` | object | The current page (always set; synthetic for listings). |
 
 Functions:
@@ -107,6 +108,31 @@ without pagination has `total_pages == 1`.
 
 `templates/shortcodes/note.html` is invoked as `{{< note kind="warn" >}}...{{< /note >}}`.
 Arguments arrive as top-level variables and the Markdown body, already rendered, as `body`.
+
+## Skins
+
+A theme can offer alternative looks that share its markup. Declare them in `theme.yml`:
+
+```yaml
+skins:
+  - { name: sunrise, label: Sunrise, description: "Warm oranges" }
+  - { name: slate, label: Slate }
+params:
+  skin: { default: sunrise }
+  skin_switcher: { default: true }
+```
+
+Meteorite makes the list available to templates as `theme.skins` (`name`, `label`,
+`description`), and the manifest itself as `theme.name`, `theme.version`. The theme is then
+responsible for three things, all shown in the bundled themes:
+
+1. Put `data-skin="{{ config.params.skin }}"` on `<html>`.
+2. Style each skin with `:root[data-skin="sunrise"] { ... }`, overriding the same CSS variables
+   you use for light and dark. Skin rules must come after the mode rules in the stylesheet.
+3. Optionally render a switcher that sets `data-skin` and stores the choice in `localStorage`
+   (`app.js` in the bundled themes does this for any element with `data-skin-set="<name>"`).
+
+Skin names are lowercase letters, digits, `-` and `_`, and must be unique.
 
 ## Light and dark mode
 

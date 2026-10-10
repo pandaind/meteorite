@@ -1,9 +1,19 @@
 name: terminal
-version: 0.3.0
+version: 0.4.0
 description: Monospace terminal look with a meteor-shower hero, light and dark modes
 author: Meteorite
 meteorite_api: 1
+skins:
+  - { name: green, label: Green, description: "Classic green phosphor (the default look)" }
+  - { name: amber, label: Amber, description: "Amber CRT" }
+  - { name: mono, label: Mono, description: "Black and white, no colour" }
 params:
+  skin:
+    default: green
+    description: Starting skin (see the skins list); visitors can switch with the style menu
+  skin_switcher:
+    default: true
+    description: Show the style menu in the header when the theme has more than one skin
   color_scheme:
     default: dark
     description: "Initial mode: dark, light, or auto (follow the OS). Visitors can override with the toggle."

@@ -209,4 +209,40 @@
       }
     });
   }
+  // --- skins ---------------------------------------------------------------------
+  // A skin is a named palette inside the theme. It is applied with a data-skin attribute (see
+  // the head script for the pre-paint restore) and remembered per visitor.
+  var skinButtons = document.querySelectorAll("[data-skin-set]");
+  if (skinButtons.length) {
+    var currentSkin = function () {
+      return root.getAttribute("data-skin") || root.getAttribute("data-default-skin") || "";
+    };
+    var markSkin = function () {
+      var now = currentSkin();
+      skinButtons.forEach(function (b) {
+        b.setAttribute("aria-checked", String(b.getAttribute("data-skin-set") === now));
+      });
+    };
+    markSkin();
+    skinButtons.forEach(function (b) {
+      b.addEventListener("click", function () {
+        var name = b.getAttribute("data-skin-set");
+        root.setAttribute("data-skin", name);
+        try { localStorage.setItem("meteorite-skin", name); } catch (e) {}
+        markSkin();
+        var menu = b.closest("details");
+        if (menu) menu.removeAttribute("open");
+      });
+    });
+    document.addEventListener("click", function (e) {
+      document.querySelectorAll("details.skin-menu[open]").forEach(function (d) {
+        if (!d.contains(e.target)) d.removeAttribute("open");
+      });
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") {
+        document.querySelectorAll("details.skin-menu[open]").forEach(function (d) { d.removeAttribute("open"); });
+      }
+    });
+  }
 })();

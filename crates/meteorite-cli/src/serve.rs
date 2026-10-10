@@ -1,28 +1,114 @@
-//! `meteorite serve`: static file server with file watching and live reload.
+//! `meteorite serve`: static file server with file watching, live reload, and a dev-only
+//! toolbar for previewing any installed theme without editing `config.yml`.
 
+use std::collections::{HashMap, HashSet};
 use std::path::{Component, Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::mpsc;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, RwLock};
 use std::time::Duration;
 
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::extract::State;
-use axum::http::{header, StatusCode, Uri};
+use axum::http::{header, HeaderMap, StatusCode, Uri};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::Router;
-use meteorite_core::build::{BuildOptions, Builder};
-use meteorite_core::Error;
+use meteorite_core::build::{BuildOptions, BuildReport, Builder};
+use meteorite_core::config::Config;
+use meteorite_core::{theme, Error};
 use notify::{RecursiveMode, Watcher};
 use tokio::sync::broadcast;
 
 const WS_PATH: &str = "/__meteorite/ws";
+const THEME_PATH: &str = "/__meteorite/theme";
+const COOKIE: &str = "meteorite-dev-theme";
 
-const RELOAD_SCRIPT: &str = "<script>(function(){var s=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/__meteorite/ws');s.onmessage=function(){location.reload()};s.onclose=function(){setTimeout(function(){location.reload()},1000)}})();</script>";
+/// Everything the HTTP handlers and the rebuild thread share.
+struct Dev {
+    root: PathBuf,
+    /// Options for the first theme; alternates add `theme` and `out_dir` to a copy.
+    opts: BuildOptions,
+    /// Output directory of the first theme (the normal `public/`).
+    public: PathBuf,
+    /// Name of the theme the server started with.
+    primary: String,
+    builders: Mutex<HashMap<String, Builder>>,
+    /// Themes that have been built at least once, and so can be served.
+    built: RwLock<HashSet<String>>,
+}
+
+impl Dev {
+    /// Alternates live under `public/_preview/<theme>`; the URL space stays the same, the
+    /// theme is chosen per request from a cookie.
+    fn out_dir(&self, theme: &str) -> PathBuf {
+        if theme == self.primary {
+            self.public.clone()
+        } else {
+            self.public.join("_preview").join(theme)
+        }
+    }
+
+    fn opts_for(&self, theme: &str) -> BuildOptions {
+        if theme == self.primary {
+            self.opts.clone()
+        } else {
+            BuildOptions {
+                theme: Some(theme.to_string()),
+                out_dir: Some(self.out_dir(theme)),
+                ..self.opts.clone()
+            }
+        }
+    }
+
+    fn is_built(&self, theme: &str) -> bool {
+        self.built
+            .read()
+            .map(|b| b.contains(theme))
+            .unwrap_or(false)
+    }
+
+    /// Build (or rebuild) one theme. Used for the first build, on demand, and on file changes.
+    fn build_theme(&self, theme: &str) -> Result<BuildReport, Error> {
+        let opts = self.opts_for(theme);
+        let mut builders = self.builders.lock().unwrap();
+        let builder = builders
+            .entry(theme.to_string())
+            .or_insert_with(|| Builder::new(&self.root));
+        let report = builder.build(&opts)?;
+        self.built.write().unwrap().insert(theme.to_string());
+        Ok(report)
+    }
+
+    /// Rebuild every theme that has been viewed so far.
+    fn rebuild_all(&self) -> Vec<(String, Result<BuildReport, Error>)> {
+        let names: Vec<String> = self.built.read().unwrap().iter().cloned().collect();
+        let mut out = Vec::new();
+        // Primary first so errors in the main theme are reported first.
+        let mut ordered = vec![self.primary.clone()];
+        ordered.extend(names.into_iter().filter(|n| *n != self.primary));
+        for name in ordered {
+            let r = self.build_theme(&name);
+            out.push((name, r));
+        }
+        out
+    }
+
+    /// Valid installed themes, for the toolbar.
+    fn installed(&self) -> Vec<String> {
+        theme::list_installed(&self.root)
+            .map(|v| {
+                v.into_iter()
+                    .filter(|t| t.manifest.is_some())
+                    .map(|t| t.dir_name)
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+}
 
 struct AppState {
-    out_dir: PathBuf,
+    dev: Arc<Dev>,
     reload: broadcast::Sender<()>,
 }
 
@@ -36,24 +122,45 @@ pub fn run(
     let origin = format!("http://{bind}:{port}");
     opts.base_url = Some(format!("{origin}/"));
 
-    let mut builder = Builder::new(root);
-    let report = builder.build(&opts)?;
+    let primary = match &opts.theme {
+        Some(t) => t.clone(),
+        None => Config::load(root)?.theme,
+    };
+    // Build the first theme up front so errors show immediately.
+    let probe = Dev {
+        root: root.to_path_buf(),
+        opts: opts.clone(),
+        public: PathBuf::new(),
+        primary: primary.clone(),
+        builders: Mutex::new(HashMap::new()),
+        built: RwLock::new(HashSet::new()),
+    };
+    let mut first = Builder::new(root);
+    let report = first.build(&opts)?;
     println!(
-        "Built {} page(s) in {} ms",
+        "Built {} page(s) in {} ms (theme: {primary})",
         report.pages,
         report.elapsed.as_millis()
     );
     for w in &report.warnings {
         eprintln!("warning: {w}");
     }
-    let out_dir = report.output.clone();
+    let dev = Arc::new(Dev {
+        public: report.output.clone(),
+        builders: Mutex::new(HashMap::from([(primary.clone(), first)])),
+        built: RwLock::new(HashSet::from([primary.clone()])),
+        ..probe
+    });
 
     let (reload_tx, _) = broadcast::channel::<()>(16);
     let (event_tx, event_rx) = mpsc::channel::<()>();
 
     // Watch the source directories that influence the output.
     let root_abs = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
-    let out_abs = out_dir.canonicalize().unwrap_or_else(|_| out_dir.clone());
+    let out_abs = dev
+        .public
+        .canonicalize()
+        .unwrap_or_else(|_| dev.public.clone());
     let root_for_events = root_abs.clone();
     let mut watcher = notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
         if let Ok(ev) = res {
@@ -83,29 +190,36 @@ pub fn run(
 
     // Rebuild thread: debounce bursts of events, rebuild, then tell browsers to reload.
     let tx = reload_tx.clone();
+    let rebuild_dev = dev.clone();
     std::thread::spawn(move || {
         while event_rx.recv().is_ok() {
             while event_rx.recv_timeout(Duration::from_millis(120)).is_ok() {}
-            match builder.build(&opts) {
-                Ok(r) => {
-                    println!(
-                        "Rebuilt in {} ms ({} written, {} unchanged)",
-                        r.elapsed.as_millis(),
-                        r.files_written,
-                        r.files_unchanged
-                    );
-                    for w in &r.warnings {
-                        eprintln!("warning: {w}");
+            let mut any_ok = false;
+            for (name, result) in rebuild_dev.rebuild_all() {
+                match result {
+                    Ok(r) => {
+                        any_ok = true;
+                        println!(
+                            "Rebuilt {name} in {} ms ({} written, {} unchanged)",
+                            r.elapsed.as_millis(),
+                            r.files_written,
+                            r.files_unchanged
+                        );
+                        for w in &r.warnings {
+                            eprintln!("warning: {w}");
+                        }
                     }
-                    let _ = tx.send(());
+                    Err(e) => eprintln!("{:?}", miette::Report::new(e)),
                 }
-                Err(e) => eprintln!("{:?}", miette::Report::new(e)),
+            }
+            if any_ok {
+                let _ = tx.send(());
             }
         }
     });
 
     let state = Arc::new(AppState {
-        out_dir,
+        dev,
         reload: reload_tx,
     });
     let addr = format!("{bind}:{port}");
@@ -113,6 +227,7 @@ pub fn run(
     rt.block_on(async move {
         let app = Router::new()
             .route(WS_PATH, get(ws_handler))
+            .route(THEME_PATH, get(theme_handler))
             .fallback(get(file_handler))
             .with_state(state);
         let listener = tokio::net::TcpListener::bind(&addr)
@@ -228,22 +343,71 @@ fn content_type(path: &Path) -> &'static str {
     }
 }
 
-fn with_reload(html: Vec<u8>) -> Vec<u8> {
+const RELOAD_SCRIPT: &str = "<script>(function(){var s=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/__meteorite/ws');s.onmessage=function(){location.reload()};s.onclose=function(){setTimeout(function(){location.reload()},1000)}})();</script>";
+
+/// A small floating theme picker, isolated in a shadow root so it can't be styled by (or
+/// break) the site. Only served by `meteorite serve`; never part of a build.
+fn toolbar_script(themes: &[String], active: &str) -> String {
+    // Names are restricted to [A-Za-z0-9_-] by `theme::check_name`, so plain quoting is safe.
+    let list = themes
+        .iter()
+        .map(|t| format!("\"{t}\""))
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        "<script>(function(){{var T=[{list}],A=\"{active}\";if(T.length<2)return;\
+try{{if(sessionStorage.getItem('meteorite-dev-bar')==='hidden')return}}catch(e){{}}\
+var h=document.createElement('div');h.setAttribute('data-meteorite-dev','');\
+h.style.cssText='position:fixed;right:14px;bottom:14px;z-index:2147483647;all:initial;position:fixed;right:14px;bottom:14px;z-index:2147483647';\
+var r=h.attachShadow({{mode:'open'}});\
+r.innerHTML='<style>.b{{font:12px/1 system-ui,sans-serif;display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:#12141f;color:#e8e9f3;border:1px solid #2c2f45;box-shadow:0 8px 30px rgba(0,0,0,.35)}}select{{font:inherit;color:inherit;background:#1b1e2e;border:1px solid #3a3e5a;border-radius:6px;padding:4px 6px}}button{{font:inherit;color:#9a9eb8;background:none;border:0;cursor:pointer;padding:0 2px}}span{{opacity:.7}}</style><div class=\"b\"><span>Theme</span><select aria-label=\"Preview theme\"></select><button aria-label=\"Hide theme picker\" title=\"Hide\">\\u00d7</button></div>';\
+var s=r.querySelector('select');T.forEach(function(t){{var o=document.createElement('option');o.value=t;o.textContent=t;if(t===A)o.selected=true;s.appendChild(o)}});\
+s.addEventListener('change',function(){{location.href='{THEME_PATH}?name='+encodeURIComponent(s.value)+'&next='+encodeURIComponent(location.pathname+location.search)}});\
+r.querySelector('button').addEventListener('click',function(){{try{{sessionStorage.setItem('meteorite-dev-bar','hidden')}}catch(e){{}}h.remove()}});\
+document.body.appendChild(h)}})();</script>"
+    )
+}
+
+fn with_dev_scripts(html: Vec<u8>, themes: &[String], active: &str) -> Vec<u8> {
     let text = String::from_utf8_lossy(&html).into_owned();
+    let inject = format!("{RELOAD_SCRIPT}{}", toolbar_script(themes, active));
     match text.rfind("</body>") {
-        Some(at) => format!("{}{}{}", &text[..at], RELOAD_SCRIPT, &text[at..]).into_bytes(),
-        None => format!("{text}{RELOAD_SCRIPT}").into_bytes(),
+        Some(at) => format!("{}{}{}", &text[..at], inject, &text[at..]).into_bytes(),
+        None => format!("{text}{inject}").into_bytes(),
     }
 }
 
-async fn file_handler(State(state): State<Arc<AppState>>, uri: Uri) -> Response {
-    let Some(path) = resolve(&state.out_dir, uri.path()) else {
+/// The theme chosen by the dev cookie, if it names a theme that has been built.
+fn cookie_theme(headers: &HeaderMap, dev: &Dev) -> String {
+    let raw = headers
+        .get(header::COOKIE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    for part in raw.split(';') {
+        if let Some((k, v)) = part.trim().split_once('=') {
+            if k == COOKIE && theme::check_name(v).is_ok() && dev.is_built(v) {
+                return v.to_string();
+            }
+        }
+    }
+    dev.primary.clone()
+}
+
+async fn file_handler(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    uri: Uri,
+) -> Response {
+    let dev = &state.dev;
+    let active = cookie_theme(&headers, dev);
+    let out_dir = dev.out_dir(&active);
+    let Some(path) = resolve(&out_dir, uri.path()) else {
         return (StatusCode::BAD_REQUEST, "bad path").into_response();
     };
     let (path, status) = if path.is_file() {
         (path, StatusCode::OK)
     } else {
-        let not_found = state.out_dir.join("404.html");
+        let not_found = out_dir.join("404.html");
         if not_found.is_file() {
             (not_found, StatusCode::NOT_FOUND)
         } else {
@@ -254,7 +418,7 @@ async fn file_handler(State(state): State<Arc<AppState>>, uri: Uri) -> Response 
         Ok(bytes) => {
             let ct = content_type(&path);
             let body = if ct.starts_with("text/html") {
-                with_reload(bytes)
+                with_dev_scripts(bytes, &dev.installed(), &active)
             } else {
                 bytes
             };
@@ -272,6 +436,75 @@ async fn file_handler(State(state): State<Arc<AppState>>, uri: Uri) -> Response 
     }
 }
 
+/// `GET /__meteorite/theme?name=<theme>&next=<path>`: build the theme if needed, remember
+/// the choice in a cookie, and send the browser back to where it was.
+async fn theme_handler(State(state): State<Arc<AppState>>, uri: Uri) -> Response {
+    let query = uri.query().unwrap_or("");
+    let param = |key: &str| -> Option<String> {
+        query.split('&').find_map(|kv| {
+            let (k, v) = kv.split_once('=')?;
+            (k == key).then(|| percent_decode(&v.replace('+', " ")))
+        })
+    };
+    let Some(name) = param("name") else {
+        return (StatusCode::BAD_REQUEST, "missing `name`").into_response();
+    };
+    if theme::check_name(&name).is_err() || !state.dev.installed().contains(&name) {
+        return (StatusCode::BAD_REQUEST, format!("unknown theme `{name}`")).into_response();
+    }
+    let next = safe_next(param("next").as_deref());
+
+    if !state.dev.is_built(&name) {
+        let dev = state.dev.clone();
+        let theme_name = name.clone();
+        let result = tokio::task::spawn_blocking(move || dev.build_theme(&theme_name)).await;
+        match result {
+            Ok(Ok(report)) => {
+                println!("Built theme {name} in {} ms", report.elapsed.as_millis());
+            }
+            Ok(Err(e)) => {
+                let summary = e.to_string();
+                eprintln!("{:?}", miette::Report::new(e));
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Could not build theme `{name}`:\n\n{summary}\n\nSee the terminal for details."),
+                )
+                    .into_response();
+            }
+            Err(e) => {
+                return (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response();
+            }
+        }
+    }
+    (
+        StatusCode::FOUND,
+        [
+            (header::LOCATION, next),
+            (
+                header::SET_COOKIE,
+                format!("{COOKIE}={name}; Path=/; SameSite=Lax"),
+            ),
+            (header::CACHE_CONTROL, "no-store".to_string()),
+        ],
+    )
+        .into_response()
+}
+
+/// Only same-site absolute paths are accepted as redirect targets.
+fn safe_next(next: Option<&str>) -> String {
+    match next {
+        Some(n)
+            if n.starts_with('/')
+                && !n.starts_with("//")
+                && !n.contains('\\')
+                && !n.chars().any(|c| c.is_control()) =>
+        {
+            n.to_string()
+        }
+        _ => "/".to_string(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -286,5 +519,31 @@ mod tests {
             resolve(out, "/a/b.css"),
             Some(PathBuf::from("/srv/public/a/b.css"))
         );
+        // Malformed escapes and non-ASCII must neither panic nor escape the directory.
+        assert!(resolve(out, "/%é/x").is_some());
+        assert!(resolve(out, "/100%").is_some());
+        assert!(resolve(out, "/%2").is_some());
+    }
+
+    #[test]
+    fn redirect_targets_stay_on_site() {
+        assert_eq!(safe_next(Some("/blog/?page=2")), "/blog/?page=2");
+        for bad in [
+            "//evil.example",
+            "https://evil.example",
+            "\\\\evil",
+            "/a\r\nSet-Cookie: x=1",
+            "",
+        ] {
+            assert_eq!(safe_next(Some(bad)), "/", "{bad:?}");
+        }
+        assert_eq!(safe_next(None), "/");
+    }
+
+    #[test]
+    fn toolbar_lists_themes_and_marks_active() {
+        let js = toolbar_script(&["default".into(), "terminal".into()], "terminal");
+        assert!(js.contains("T=[\"default\",\"terminal\"]") && js.contains("A=\"terminal\""));
+        assert!(js.contains("/__meteorite/theme?name="));
     }
 }

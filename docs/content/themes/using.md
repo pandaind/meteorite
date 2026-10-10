@@ -50,6 +50,41 @@ Symlinks and `.git` are stripped. Themes are templates and static files only; th
 code. Raw HTML and `<script>` tags in a theme's templates do end up in your site, so read a
 theme before you trust it with a production site.
 
+## Previewing other themes
+
+You don't have to edit `config.yml` to try a theme. Use `--theme` on `build`, `serve` or `check`:
+
+```sh
+meteorite serve --theme terminal
+meteorite build --theme terminal --output /tmp/preview
+```
+
+While `meteorite serve` is running with two or more themes installed, a small picker appears
+in the bottom-right corner of every page. Choose another theme and the same URL is re-rendered
+with it, instantly; edits rebuild every theme you've looked at. The picker exists only in the
+dev server and is never part of a build. Your `config.yml` is not touched.
+
+## Skins: change the look without changing the theme
+
+A theme can ship several **skins**: named palettes (and sometimes a heading typeface) that change
+the colours but not the markup. Both bundled themes do:
+
+| Theme | Skins |
+|---|---|
+| `default` | `meteor` (default), `paper` (warm, serif headings), `aurora` (teal and violet) |
+| `terminal` | `green` (default), `amber`, `mono` |
+
+Visitors get a palette button in the header; their choice is remembered like the light/dark
+mode, and every skin works in both modes. Set the starting skin, or hide the menu:
+
+```yaml
+params:
+  skin: paper
+  skin_switcher: false
+```
+
+An unknown skin name produces a warning that lists the available ones.
+
 ## Customising without forking
 
 Anything in your site's own `templates/` or `static/` directory wins over the theme's file of

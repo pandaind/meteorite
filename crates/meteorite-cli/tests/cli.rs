@@ -277,11 +277,9 @@ fn bundled_themes_ship_a_color_mode_toggle() {
     .unwrap();
     ok(&site, &["build"]);
     let html = page();
-    assert!(
-        html.contains("<html lang=\"en\" data-theme=\"dark\">"),
-        "{}",
-        &html[..200]
-    );
+    let tag = &html[html.find("<html").unwrap()..];
+    let tag = &tag[..tag.find('>').unwrap()];
+    assert!(tag.contains("data-theme=\"dark\""), "{tag}");
     assert!(!html.contains("id=\"theme-toggle\""));
 }
 
@@ -650,6 +648,122 @@ fn clean_removes_public() {
     assert!(!site.join("public").exists());
 }
 
+/// A copy of the fixture's theme under another name, with a marker in its base template.
+fn add_marked_theme(site: &Path, name: &str, marker: &str) {
+    let src = site.join("themes/test");
+    let out = run(
+        site,
+        &["theme", "add", src.to_str().unwrap(), "--name", name],
+    );
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let base = site.join("themes").join(name).join("templates/base.html");
+    let html = fs::read_to_string(&base).unwrap();
+    fs::write(&base, format!("<!-- {marker} -->\n{html}")).unwrap();
+}
+
+#[test]
+fn theme_flag_overrides_config_without_editing_it() {
+    let site = fixture_copy("themeflag");
+    add_marked_theme(&site, "alt", "ALT-THEME-MARKER");
+    let before = fs::read_to_string(site.join("config.yml")).unwrap();
+
+    ok(&site, &["build"]);
+    assert!(!read(&site, "about/index.html").contains("ALT-THEME-MARKER"));
+
+    ok(&site, &["build", "--theme", "alt"]);
+    assert!(read(&site, "about/index.html").contains("ALT-THEME-MARKER"));
+    assert_eq!(fs::read_to_string(site.join("config.yml")).unwrap(), before);
+
+    // check honours it too, and bad names are refused before anything is touched.
+    assert!(run(&site, &["check", "--theme", "alt"]).status.success());
+    for bad in ["../x", "a/b", "nope"] {
+        let out = run(&site, &["build", "--theme", bad]);
+        assert!(!out.status.success(), "{bad}");
+    }
+}
+
+#[test]
+fn bundled_themes_offer_skins_and_a_style_menu() {
+    let dir = tmp("skins");
+    let site = dir.join("s");
+    ok(&dir, &["new", "site", site.to_str().unwrap()]);
+    ok(&site, &["theme", "add", "terminal"]);
+    for (theme, default_skin, others) in [
+        ("default", "meteor", ["paper", "aurora"]),
+        ("terminal", "green", ["amber", "mono"]),
+    ] {
+        ok(&site, &["build", "--theme", theme]);
+        let home = read(&site, "index.html");
+        assert!(
+            home.contains(&format!("data-skin=\"{default_skin}\"")),
+            "{theme}"
+        );
+        assert!(
+            home.contains("class=\"skin-menu\""),
+            "{theme}: style menu missing"
+        );
+        for skin in others {
+            assert!(
+                home.contains(&format!("data-skin-set=\"{skin}\"")),
+                "{theme}: {skin}"
+            );
+            // Every skin has CSS, so choosing it can never produce an unstyled page.
+            let css = ["style.css", "terminal.css"]
+                .iter()
+                .find_map(|f| fs::read_to_string(site.join("public").join(f)).ok())
+                .unwrap();
+            assert!(
+                css.contains(&format!("[data-skin=\"{skin}\"]")),
+                "{theme}: no CSS for {skin}"
+            );
+        }
+        // The visitor's saved choice is applied before paint, from a validated allow-list.
+        assert!(
+            home.contains("meteorite-skin") && home.contains(&format!("\"{default_skin}\"")),
+            "{theme}"
+        );
+    }
+
+    // A configured skin is pinned on <html>; the menu can be switched off.
+    let cfg = fs::read_to_string(site.join("config.yml")).unwrap();
+    fs::write(
+        site.join("config.yml"),
+        cfg.replace(
+            "  author: Me\n",
+            "  author: Me\n  skin: paper\n  skin_switcher: false\n",
+        ),
+    )
+    .unwrap();
+    ok(&site, &["build", "--theme", "default"]);
+    let home = read(&site, "index.html");
+    assert!(home.contains("data-skin=\"paper\"") && !home.contains("class=\"skin-menu\""));
+}
+
+#[test]
+fn unknown_skin_is_a_warning_not_an_error() {
+    let dir = tmp("skinwarn");
+    let site = dir.join("s");
+    ok(&dir, &["new", "site", site.to_str().unwrap()]);
+    let cfg = fs::read_to_string(site.join("config.yml")).unwrap();
+    fs::write(
+        site.join("config.yml"),
+        cfg.replace("  author: Me\n", "  author: Me\n  skin: neon-pink\n"),
+    )
+    .unwrap();
+    let out = run(&site, &["build"]);
+    assert!(out.status.success());
+    let err = flat(&String::from_utf8_lossy(&out.stderr));
+    assert!(
+        err.contains("`neon-pink` is not a skin of theme `default`"),
+        "{err}"
+    );
+    assert!(err.contains("meteor"), "lists the available skins: {err}");
+}
+
 // ---- dev server --------------------------------------------------------------
 
 struct Server(Child);
@@ -660,12 +774,13 @@ impl Drop for Server {
     }
 }
 
-fn try_get(port: u16, path: &str) -> std::io::Result<(u16, String)> {
+fn try_get_with(port: u16, path: &str, headers: &[&str]) -> std::io::Result<(u16, String)> {
     let mut s = TcpStream::connect(("127.0.0.1", port))?;
     s.set_read_timeout(Some(Duration::from_secs(5)))?;
+    let extra: String = headers.iter().map(|h| format!("{h}\r\n")).collect();
     write!(
         s,
-        "GET {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
+        "GET {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n{extra}\r\n"
     )?;
     let mut raw = Vec::new();
     s.read_to_end(&mut raw)?;
@@ -680,9 +795,13 @@ fn try_get(port: u16, path: &str) -> std::io::Result<(u16, String)> {
 
 /// Socket-level hiccups on a loaded machine are retried; HTTP-level results are not.
 fn get(port: u16, path: &str) -> (u16, String) {
+    get_with(port, path, &[])
+}
+
+fn get_with(port: u16, path: &str, headers: &[&str]) -> (u16, String) {
     let mut last = None;
     for _ in 0..20 {
-        match try_get(port, path) {
+        match try_get_with(port, path, headers) {
             Ok(r) => return r,
             Err(e) => {
                 last = Some(e);
@@ -743,4 +862,92 @@ fn serve_serves_reloads_and_blocks_traversal() {
         assert!(Instant::now() < deadline, "edit was not picked up");
         std::thread::sleep(Duration::from_millis(150));
     }
+}
+
+#[test]
+fn serve_previews_other_themes_without_touching_config() {
+    let site = fixture_copy("serveswitch");
+    add_marked_theme(&site, "alt", "ALT-THEME-MARKER");
+    let config_before = fs::read_to_string(site.join("config.yml")).unwrap();
+    let port = TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let child = Command::new(BIN)
+        .arg("--root")
+        .arg(&site)
+        .args(["serve", "--port", &port.to_string()])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    let _server = Server(child);
+    let deadline = Instant::now() + Duration::from_secs(20);
+    while TcpStream::connect(("127.0.0.1", port)).is_err() {
+        assert!(Instant::now() < deadline, "server did not start");
+        std::thread::sleep(Duration::from_millis(100));
+    }
+
+    // The toolbar lists installed themes and marks the active one; no marker yet.
+    let (_, page) = get(port, "/about/");
+    assert!(page.contains("data-meteorite-dev"), "toolbar missing");
+    assert!(
+        page.contains("\"alt\"") && page.contains("\"test\""),
+        "themes not listed"
+    );
+    assert!(!page.contains("ALT-THEME-MARKER"));
+
+    // Choosing a theme builds it, sets a cookie, and redirects back.
+    let (status, resp) = get(port, "/__meteorite/theme?name=alt&next=/about/");
+    assert_eq!(status, 302, "{resp}");
+    assert!(
+        resp.contains("location: /about/") || resp.contains("Location: /about/"),
+        "{resp}"
+    );
+    assert!(
+        resp.to_lowercase()
+            .contains("set-cookie: meteorite-dev-theme=alt"),
+        "{resp}"
+    );
+
+    // With the cookie the alternate theme is served from the same URLs; without it, the original.
+    let (_, themed) = get_with(port, "/about/", &["Cookie: meteorite-dev-theme=alt"]);
+    assert!(themed.contains("ALT-THEME-MARKER"), "{themed}");
+    let (_, plain) = get(port, "/about/");
+    assert!(!plain.contains("ALT-THEME-MARKER"));
+    // A cookie naming a theme that was never built falls back safely.
+    let (_, odd) = get_with(port, "/about/", &["Cookie: meteorite-dev-theme=../../etc"]);
+    assert!(odd.contains("Fixture Site") && !odd.contains("ALT-THEME-MARKER"));
+
+    // Bad input is refused; open redirects are neutralised.
+    assert_eq!(get(port, "/__meteorite/theme?name=../x").0, 400);
+    assert_eq!(get(port, "/__meteorite/theme?name=nope").0, 400);
+    assert_eq!(get(port, "/__meteorite/theme").0, 400);
+    let (s2, r2) = get(port, "/__meteorite/theme?name=alt&next=//evil.example/x");
+    assert_eq!(s2, 302);
+    assert!(
+        r2.contains("ocation: /\r\n"),
+        "redirect must fall back to /: {r2}"
+    );
+
+    // Edits rebuild the alternate theme too.
+    fs::write(
+        site.join("content/about.md"),
+        "---\ntitle: About\n---\nSWITCH-EDIT\n",
+    )
+    .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(15);
+    loop {
+        let (_, p) = get_with(port, "/about/", &["Cookie: meteorite-dev-theme=alt"]);
+        if p.contains("SWITCH-EDIT") && p.contains("ALT-THEME-MARKER") {
+            break;
+        }
+        assert!(Instant::now() < deadline, "alternate theme was not rebuilt");
+        std::thread::sleep(Duration::from_millis(150));
+    }
+    assert_eq!(
+        fs::read_to_string(site.join("config.yml")).unwrap(),
+        config_before
+    );
 }
