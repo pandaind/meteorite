@@ -93,6 +93,12 @@ fn flat(s: &str) -> String {
         .join(" ")
 }
 
+/// Like `flat`, but with all whitespace removed. Long paths get word-wrapped mid-path, so
+/// assertions about "file:line" must ignore the wrapping entirely.
+fn squash(s: &str) -> String {
+    flat(s).split_whitespace().collect()
+}
+
 fn read(root: &Path, rel: &str) -> String {
     fs::read_to_string(root.join("public").join(rel))
         .unwrap_or_else(|e| panic!("cannot read public/{rel}: {e}"))
@@ -291,8 +297,9 @@ fn template_syntax_error_points_at_the_line() {
     let out = run(&site, &["build"]);
     assert!(!out.status.success());
     let err = String::from_utf8_lossy(&out.stderr);
-    assert!(err.contains("templates/page.html:3"), "{err}");
-    assert!(err.contains("template syntax error"), "{err}");
+    // Match on file name and line only: separators differ on Windows and long paths wrap.
+    assert!(squash(&err).contains("page.html:3"), "{err}");
+    assert!(flat(&err).contains("template syntax error"), "{err}");
 }
 
 #[test]
@@ -308,7 +315,7 @@ fn template_render_error_names_the_variable_and_line() {
     assert!(!out.status.success());
     let err = flat(&String::from_utf8_lossy(&out.stderr));
     assert!(err.contains("no_such_variable"), "{err}");
-    assert!(err.contains("templates/page.html:4"), "{err}");
+    assert!(squash(&err).contains("page.html:4"), "{err}");
 }
 
 #[test]
