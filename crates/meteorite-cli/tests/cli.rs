@@ -744,6 +744,76 @@ fn bundled_themes_offer_skins_and_a_style_menu() {
 }
 
 #[test]
+fn stale_bundled_theme_is_detected_and_updated_with_a_backup() {
+    let dir = tmp("update");
+    let site = dir.join("s");
+    ok(&dir, &["new", "site", site.to_str().unwrap()]);
+
+    // Make the installed copy look like an older release with a local customisation.
+    let theme_yml = site.join("themes/default/theme.yml");
+    let yml = fs::read_to_string(&theme_yml).unwrap();
+    let old = yml
+        .lines()
+        .map(|l| {
+            if l.starts_with("version:") {
+                "version: 0.1.0"
+            } else {
+                l
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    fs::write(&theme_yml, old).unwrap();
+    fs::write(
+        site.join("themes/default/static/MY-CUSTOM.css"),
+        "/* mine */",
+    )
+    .unwrap();
+
+    let list = ok(&site, &["theme", "list"]);
+    assert!(list.contains("update available"), "{list}");
+
+    // Building says so too, instead of silently rendering without the newer features.
+    let stale_build = run(&site, &["build"]);
+    assert!(stale_build.status.success());
+    let warn = flat(&String::from_utf8_lossy(&stale_build.stderr));
+    assert!(warn.contains("meteorite theme update default"), "{warn}");
+
+    let out = ok(&site, &["theme", "update"]);
+    assert!(out.contains("Updated `default` 0.1.0 ->"), "{out}");
+    // Fresh version installed, and the old copy (with the customisation) is kept.
+    assert!(!fs::read_to_string(&theme_yml)
+        .unwrap()
+        .contains("version: 0.1.0"));
+    assert!(!site.join("themes/default/static/MY-CUSTOM.css").exists());
+    let backups: Vec<_> = fs::read_dir(site.join("themes/.backup"))
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .collect();
+    assert_eq!(backups.len(), 1);
+    assert!(backups[0].path().join("static/MY-CUSTOM.css").is_file());
+
+    // The site builds with the refreshed theme, and now reports nothing to update.
+    let fresh = run(&site, &["build"]);
+    assert!(!String::from_utf8_lossy(&fresh.stderr).contains("theme update"));
+    assert!(read(&site, "index.html").contains("class=\"skin-menu\""));
+    assert!(ok(&site, &["theme", "list"])
+        .find("update available")
+        .is_none());
+    assert!(ok(&site, &["theme", "update"]).contains("up to date"));
+    // Backups are not themes: they must not show up in `theme list`.
+    assert!(!ok(&site, &["theme", "list"]).contains(".backup"));
+
+    // Only bundled themes can be updated this way.
+    let custom = site.join("themes/mine");
+    copy_dir(&site.join("themes/default"), &custom);
+    fs::write(custom.join("theme.yml"), "name: mine\nversion: 1.0.0\n").unwrap();
+    let out = run(&site, &["theme", "update", "mine"]);
+    assert!(!out.status.success());
+    assert!(flat(&String::from_utf8_lossy(&out.stderr)).contains("not a bundled theme"));
+}
+
+#[test]
 fn unknown_skin_is_a_warning_not_an_error() {
     let dir = tmp("skinwarn");
     let site = dir.join("s");

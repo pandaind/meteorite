@@ -248,6 +248,99 @@ pub fn add(root: &Path, source: &str, name: Option<&str>) -> Result<String> {
     result
 }
 
+/// Compare dotted numeric versions (`0.4.0` > `0.3.9`). Unparseable parts count as 0.
+pub fn version_newer(candidate: &str, installed: &str) -> bool {
+    let parse = |v: &str| -> Vec<u64> {
+        v.split('.')
+            .map(|p| {
+                p.chars()
+                    .take_while(|c| c.is_ascii_digit())
+                    .collect::<String>()
+                    .parse()
+                    .unwrap_or(0)
+            })
+            .collect()
+    };
+    let (a, b) = (parse(candidate), parse(installed));
+    for i in 0..a.len().max(b.len()) {
+        let (x, y) = (
+            a.get(i).copied().unwrap_or(0),
+            b.get(i).copied().unwrap_or(0),
+        );
+        if x != y {
+            return x > y;
+        }
+    }
+    false
+}
+
+/// If `name` is a bundled theme whose bundled version is newer than `installed_version`,
+/// return that newer version.
+pub fn update_available(name: &str, installed_version: &str) -> Option<String> {
+    let b = bundled::find(name)?;
+    let v = b.version();
+    version_newer(&v, installed_version).then_some(v)
+}
+
+pub struct Updated {
+    pub name: String,
+    pub from: String,
+    pub to: String,
+    /// Where the previous copy was moved; nothing is deleted.
+    pub backup: PathBuf,
+}
+
+/// Replace an installed copy of a *bundled* theme with the version built into this binary.
+///
+/// The old copy is moved to `themes/.backup/<name>-<version>-<timestamp>/` first, so local
+/// edits are never lost. Customisations kept in the site's own `templates/` and `static/`
+/// are not touched.
+pub fn update(root: &Path, name: &str) -> Result<Updated> {
+    check_name(name)?;
+    let bundled = bundled::find(name).ok_or_else(|| {
+        Error::Msg(format!(
+            "`{name}` is not a bundled theme ({}); reinstall third-party themes with `theme remove` and `theme add`",
+            bundled::names().join(", ")
+        ))
+    })?;
+    let themes = root.join("themes");
+    let dir = themes.join(name);
+    if !dir.is_dir() {
+        return Err(Error::ThemeNotFound(name.to_string()));
+    }
+    let from = Theme::load(&dir)
+        .map(|t| t.manifest.version)
+        .unwrap_or_else(|_| "unknown".to_string());
+    let to = bundled.version();
+
+    let staging = themes.join(format!(".staging-{}", std::process::id()));
+    if staging.exists() {
+        fs::remove_dir_all(&staging).map_err(io_err(&staging))?;
+    }
+    bundled.write_to(&staging)?;
+    Theme::load(&staging)?; // never swap in something that doesn't load
+
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let backups = themes.join(".backup");
+    fs::create_dir_all(&backups).map_err(io_err(&backups))?;
+    let backup = backups.join(format!("{name}-{from}-{stamp}"));
+    fs::rename(&dir, &backup).map_err(io_err(&backup))?;
+    if let Err(e) = fs::rename(&staging, &dir) {
+        let _ = fs::rename(&backup, &dir); // put the old copy back
+        let _ = fs::remove_dir_all(&staging);
+        return Err(io_err(&dir)(e));
+    }
+    Ok(Updated {
+        name: name.to_string(),
+        from,
+        to,
+        backup,
+    })
+}
+
 pub fn remove(root: &Path, name: &str, active: &str) -> Result<()> {
     check_name(name)?;
     if name == active {
@@ -333,6 +426,16 @@ fn copy_tree(from: &Path, to: &Path) -> Result<()> {
 mod tests {
     use super::*;
     use std::fs;
+
+    #[test]
+    fn version_ordering() {
+        assert!(version_newer("0.4.0", "0.3.0"));
+        assert!(version_newer("0.10.0", "0.9.9"));
+        assert!(version_newer("1.0", "0.9.9"));
+        assert!(!version_newer("0.3.0", "0.3.0"));
+        assert!(!version_newer("0.3.0", "0.4.0"));
+        assert!(!version_newer("", "0.1.0"));
+    }
 
     fn theme_dir(name: &str, yml: &str) -> PathBuf {
         let d = std::env::temp_dir().join(format!("meteorite-theme-{name}-{}", std::process::id()));

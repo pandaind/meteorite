@@ -50,6 +50,28 @@ Symlinks and `.git` are stripped. Themes are templates and static files only; th
 code. Raw HTML and `<script>` tags in a theme's templates do end up in your site, so read a
 theme before you trust it with a production site.
 
+## Upgrading bundled themes
+
+A site keeps its own copy of a theme in `themes/<name>/`, made when you installed it. Upgrading
+Meteorite therefore does **not** change an existing site's theme, and a theme copied from an older
+release can lack newer features (skins, search, the style menu) while a theme you add today has
+them.
+
+Meteorite tells you: `theme list` marks outdated bundled themes, and `build` and `serve` print a
+warning for the active one. To refresh:
+
+```sh
+meteorite theme list                 # shows: [update available: 0.4.0]
+meteorite theme update               # every outdated bundled theme
+meteorite theme update default       # or just one
+```
+
+The previous copy is moved to `themes/.backup/<name>-<version>-<timestamp>/`, never deleted, so
+local edits can be recovered. To keep customisations across updates, put them in your site's
+own `templates/` and `static/` directories, which always override the theme and are never touched.
+Only bundled themes can be updated this way; reinstall a third-party theme with `theme remove`
+and `theme add`.
+
 ## Previewing other themes
 
 You don't have to edit `config.yml` to try a theme. Use `--theme` on `build`, `serve` or `check`:

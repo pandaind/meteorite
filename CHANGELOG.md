@@ -6,6 +6,11 @@ in a major release.
 
 ## [Unreleased]
 
+- `meteorite theme update [name]` refreshes installed bundled themes to the version in the
+  running release, keeping the old copy in `themes/.backup/`. `theme list` marks outdated
+  themes and `build` / `serve` warn when the active theme is older than the bundled one
+  (an existing site keeps its own copy of a theme, so it did not pick up new features)
+
 - Theme switching. `--theme <name>` on `build`, `serve` and `check` overrides the theme in
   `config.yml`. While serving, a dev-only picker re-renders the same URL under any installed
   theme and rebuilds every theme you have looked at on change

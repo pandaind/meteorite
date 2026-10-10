@@ -14,6 +14,7 @@ Every command accepts `-r, --root <DIR>` to operate on a site other than the cur
 | `meteorite clean` | Delete `public/`. |
 | `meteorite theme list` | Show installed and bundled themes. `*` marks the active one. |
 | `meteorite theme add <src> [--name <n>]` | Install a theme from a bundled name, a directory, or a git URL. |
+| `meteorite theme update [name]` | Replace an outdated bundled theme with this release's version; the old copy is kept in `themes/.backup/`. |
 | `meteorite theme remove <name>` | Delete an installed theme (not the active one). |
 
 ## build

@@ -136,6 +136,14 @@ impl Builder {
         }
         let theme = Theme::load(&theme_dir)?;
         theme.resolve_params(&mut config.params)?;
+        if let Some(newer) = crate::theme::update_available(&config.theme, &theme.manifest.version)
+        {
+            warnings.push(format!(
+                "theme `{}` is version {} but this release bundles {newer}; it is missing newer features. \
+                 Run `meteorite theme update {}` (your copy is kept in themes/.backup/)",
+                config.theme, theme.manifest.version, config.theme
+            ));
+        }
         if let Some(serde_norway::Value::String(skin)) = config.params.get("skin") {
             let known: Vec<&str> = theme
                 .manifest

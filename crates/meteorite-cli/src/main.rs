@@ -110,6 +110,11 @@ enum ThemeCmd {
         #[arg(long)]
         name: Option<String>,
     },
+    /// Replace an installed bundled theme with the version in this release (keeps a backup)
+    Update {
+        /// Theme to update; omit to update every installed bundled theme that is out of date
+        name: Option<String>,
+    },
     /// Remove an installed theme
     Remove { name: String },
 }
@@ -231,22 +236,63 @@ fn theme_cmd(root: &Path, what: ThemeCmd) -> Result<(), Error> {
             if installed.is_empty() {
                 println!("No themes installed. Try `meteorite theme add default`.");
             }
+            let mut outdated = Vec::new();
             for t in installed {
                 let mark = if t.dir_name == active { "*" } else { " " };
                 match (t.manifest, t.error) {
-                    (Some(m), _) => println!(
-                        "{mark} {:<16} {:<8} {}",
-                        t.dir_name, m.version, m.description
-                    ),
+                    (Some(m), _) => {
+                        let note = match theme::update_available(&t.dir_name, &m.version) {
+                            Some(newer) => {
+                                outdated.push(t.dir_name.clone());
+                                format!("  [update available: {newer}]")
+                            }
+                            None => String::new(),
+                        };
+                        println!(
+                            "{mark} {:<16} {:<8} {}{note}",
+                            t.dir_name, m.version, m.description
+                        )
+                    }
                     (None, Some(e)) => println!("{mark} {:<16} invalid: {e}", t.dir_name),
                     (None, None) => {}
                 }
             }
             println!("\nBundled: {}", meteorite_core::bundled::names().join(", "));
+            if !outdated.is_empty() {
+                println!(
+                    "\nNewer versions of {} ship with this release. Run `meteorite theme update`;\nyour current copy is kept under themes/.backup/.",
+                    outdated.join(", ")
+                );
+            }
         }
         ThemeCmd::Add { source, name } => {
             let installed = theme::add(root, &source, name.as_deref())?;
             println!("Installed theme `{installed}`. Activate it with `theme: {installed}` in config.yml.");
+        }
+        ThemeCmd::Update { name } => {
+            let targets: Vec<String> = match name {
+                Some(n) => vec![n],
+                None => theme::list_installed(root)?
+                    .into_iter()
+                    .filter_map(|t| {
+                        let m = t.manifest?;
+                        theme::update_available(&t.dir_name, &m.version).map(|_| t.dir_name)
+                    })
+                    .collect(),
+            };
+            if targets.is_empty() {
+                println!("All installed bundled themes are up to date.");
+            }
+            for t in targets {
+                let u = theme::update(root, &t)?;
+                println!(
+                    "Updated `{}` {} -> {}. Previous copy: {}",
+                    u.name,
+                    u.from,
+                    u.to,
+                    u.backup.display()
+                );
+            }
         }
         ThemeCmd::Remove { name } => {
             let active = Config::load(root).map(|c| c.theme).unwrap_or_default();

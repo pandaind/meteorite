@@ -15,6 +15,19 @@ pub struct Bundled {
 }
 
 impl Bundled {
+    /// The version declared in this bundled theme's `theme.yml`.
+    pub fn version(&self) -> String {
+        self.files
+            .iter()
+            .find(|(path, _)| *path == "theme.yml")
+            .and_then(|(_, text)| {
+                text.lines()
+                    .find_map(|l| l.strip_prefix("version:"))
+                    .map(|v| v.trim().trim_matches('"').to_string())
+            })
+            .unwrap_or_default()
+    }
+
     pub fn write_to(&self, dir: &Path) -> Result<()> {
         for (rel, body) in self.files {
             let path = dir.join(rel);
