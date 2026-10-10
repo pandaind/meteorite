@@ -1,0 +1,87 @@
+{% import "macros.html" as m %}{% set p = config.params %}{% set person = config.title %}<!doctype html>
+<html lang="{{ config.language }}"{% if p.color_scheme == "light" or p.color_scheme == "dark" %} data-theme="{{ p.color_scheme }}"{% endif %} data-skin="{{ p.skin }}" data-default-skin="{{ p.skin }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {%- if page.meta.title and page.url != "/" %}{% set page_title = page.meta.title ~ " · " ~ person %}{% else %}{% set page_title = person %}{% endif %}
+  {%- if page.meta.description %}{% set page_desc = page.meta.description %}{% elif p.tagline %}{% set page_desc = p.tagline %}{% else %}{% set page_desc = "" %}{% endif %}
+  <title>{{ page_title }}</title>
+  {% if page_desc %}<meta name="description" content="{{ page_desc }}">{% endif %}
+  <link rel="canonical" href="{{ page.permalink }}">
+  <meta property="og:type" content="{% if page.url == '/' %}website{% else %}article{% endif %}">
+  <meta property="og:title" content="{{ page.meta.title | default(value=person) }}">
+  <meta property="og:site_name" content="{{ person }}">
+  <meta property="og:url" content="{{ page.permalink }}">
+  {% if page_desc %}<meta property="og:description" content="{{ page_desc }}">{% endif %}
+  {% if page.meta.image %}{% set og = page.meta.image %}{% elif p.og_image %}{% set og = p.og_image %}{% elif p.avatar %}{% set og = p.avatar %}{% else %}{% set og = "" %}{% endif %}
+  {% if og %}<meta property="og:image" content="{{ url(path=og) }}">{% endif %}
+  <meta name="twitter:card" content="{% if og %}summary_large_image{% else %}summary{% endif %}">
+  {% if p.favicon %}<link rel="icon" href="{{ url(path=p.favicon) }}"{% if p.favicon is ending_with(".svg") %} type="image/svg+xml"{% endif %}>{% endif %}
+  {% set skin_names = theme.skins | map(attribute="name") %}
+  <script>try{var d=document.documentElement;d.classList.add("js");var m=localStorage.getItem("meteorite-theme"),k=localStorage.getItem("meteorite-skin"),ok={{ skin_names | json_encode | safe }};if(m==="light"||m==="dark")d.setAttribute("data-theme",m);if(k&&ok.indexOf(k)>-1)d.setAttribute("data-skin",k)}catch(e){}</script>
+  {% if p.accent or p.accent_dark %}<style>:root{{ "{" }}{% if p.accent %}--accent-override-l:{{ p.accent }};{% endif %}{% if p.accent_dark %}--accent-override-d:{{ p.accent_dark }};{% endif %}{{ "}" }}</style>{% endif %}
+  <link rel="stylesheet" href="{{ url(path='devlog.css') }}">
+  <link rel="stylesheet" href="{{ url(path='highlight.css') }}">
+  {% if config.feed.enabled %}<link rel="alternate" type="application/atom+xml" title="{{ person }}" href="{{ url(path='atom.xml') }}">{% endif %}
+  <script src="{{ url(path='devlog.js') }}" defer></script>
+  {% if page.url == "/" %}
+  {% set pname = page.meta.profile.name | default(value=person) %}
+  <script type="application/ld+json">{
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": {{ pname | json_encode | safe }},
+    "url": {{ url(path="/") | json_encode | safe }}{% if page.meta.profile.role %},
+    "jobTitle": {{ page.meta.profile.role | json_encode | safe }}{% endif %}{% if p.avatar %},
+    "image": {{ url(path=p.avatar) | json_encode | safe }}{% endif %}{% if data.socials %},
+    "sameAs": [{% for s in data.socials %}{% if s.url is starting_with("http") %}{{ s.url | json_encode | safe }}{% if not loop.last %}, {% endif %}{% endif %}{% endfor %}]{% endif %}
+  }</script>
+  {% endif %}
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="{{ url(path='/') }}">{{ m::icon(name="terminal", size=18) | safe }}<span>{{ person | lower | replace(from=" ", to="-") }}</span></a>
+      <nav class="tabs" aria-label="Main">
+        {% if config.menus.main %}{% for item in config.menus.main %}<a href="{{ url(path=item.url) }}"{% if page.url == item.url or (item.url != "/" and page.url is starting_with(item.url)) %} aria-current="page"{% endif %}>{{ item.name }}</a>{% endfor %}{% endif %}
+      </nav>
+      <div class="tools">
+        {% if p.skin_switcher and theme.skins | length > 1 %}<details class="skin-menu">
+          <summary class="icon-btn" aria-label="Choose a style" title="Choose a style">{{ m::icon(name="palette") | safe }}</summary>
+          <ul class="skin-list" role="menu" aria-label="Style">
+            {% for s in theme.skins %}<li role="none"><button type="button" role="menuitemradio" aria-checked="false" data-skin-set="{{ s.name }}">{{ s.label }}</button></li>{% endfor %}
+          </ul>
+        </details>{% endif %}
+        {% if config.search.enabled %}<button id="search-open" class="icon-btn" type="button" hidden aria-label="Search" aria-keyshortcuts="/" title="Search (/)">{{ m::icon(name="search") | safe }}</button>{% endif %}
+        {% if p.theme_toggle %}<button id="theme-toggle" class="icon-btn theme-toggle" type="button" hidden aria-label="Switch colour mode">
+          <span class="i-sun">{{ m::icon(name="sun") | safe }}</span><span class="i-moon">{{ m::icon(name="moon") | safe }}</span>
+        </button>{% endif %}
+      </div>
+    </div>
+  </header>
+  <main id="main">
+    {% block content %}{% endblock content %}
+  </main>
+  <footer class="statusbar">
+    <div class="container statusbar-inner">
+      <span class="sb-item">{{ m::icon(name="branch", size=13) | safe }} main</span>
+      <span class="sb-item sb-grow">{% if p.footer_text %}{{ p.footer_text }}{% else %}{{ person }}{% endif %}</span>
+      {% if config.feed.enabled %}<a class="sb-item" href="{{ url(path='atom.xml') }}">{{ m::icon(name="rss", size=13) | safe }} feed</a>{% endif %}
+      <span class="sb-item sb-hide">UTF-8</span>
+      <a class="sb-item" href="https://github.com/pandaind/meteorite">Meteorite {{ meteorite.version }}</a>
+    </div>
+  </footer>
+  {% if config.search.enabled %}
+  <dialog id="search-dialog" class="search-dialog" data-index="{{ url(path='search-index.json') }}" data-base="{{ url(path='/') }}" aria-label="Search">
+    <form method="dialog" class="search-box">
+      {{ m::icon(name="search", size=18) | safe }}
+      <input id="search-input" type="search" placeholder="Search the site" autocomplete="off" spellcheck="false" aria-label="Search" aria-controls="search-results">
+      <kbd>esc</kbd>
+    </form>
+    <ul id="search-results" class="search-results" role="listbox"></ul>
+    <p id="search-status" class="search-status" aria-live="polite"></p>
+  </dialog>
+  {% endif %}
+  {{ chat_widget() | safe }}
+</body>
+</html>

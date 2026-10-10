@@ -141,9 +141,15 @@ Shortcodes are small reusable templates from `templates/shortcodes/`.
     )
 }
 
-/// The starter for the `orbit` theme: a personal site with a profile, projects, a blog,
-/// micro-blog notes, a resume and a links page.
-fn orbit_files(today: &str) -> Vec<(&'static str, String)> {
+/// The starter for the personal-site themes (`orbit`, `devlog`): a profile, projects, a blog,
+/// micro-blog notes, a resume and a links page. Both themes read the same content.
+fn personal_files(theme: &str, today: &str) -> Vec<(&'static str, String)> {
+    // A few dates spread over the past months, so the activity graph has something to draw.
+    let ago = |days: i64| -> String {
+        (chrono::Utc::now() - chrono::Duration::days(days))
+            .format("%Y-%m-%d")
+            .to_string()
+    };
     let config = "\
 # Site configuration. Docs: https://github.com/pandaind/meteorite
 title: Your Name
@@ -159,7 +165,7 @@ params:
   # avatar: avatar.jpg            # put the file in static/
   # resume_pdf: resume.pdf        # a PDF in static/ adds a Download button to /resume/
   # color_scheme: auto            # auto | light | dark
-  # skin: ink                     # ink | sunset | mint
+  # skin: ...                     # see the theme's skins in themes/<name>/theme.yml
   # skin_switcher: true           # let visitors pick a skin
 
 menus:
@@ -194,7 +200,7 @@ build:
 #   api_url: https://chat.example.com
 #   welcome: Ask me about my work or writing
 "
-    .to_string();
+    .replace("theme: orbit", &format!("theme: {theme}"));
 
     let home = "\
 ---
@@ -213,8 +219,8 @@ stats:
   - { value: 8 years, label: building for the web }
   - { value: 40+, label: projects shipped }
   - { value: 120, label: posts and notes }
-sections: [projects, posts, notes, skills, contact]
-projects: { title: Selected work, limit: 3 }
+sections: [projects, activity, posts, notes, skills, contact]
+projects: { title: Selected work, limit: 4 }
 posts: { title: Writing, limit: 3 }
 notes: { title: Notes, limit: 3 }
 skills:
@@ -239,11 +245,12 @@ sort_by: weight
 "
     .to_string();
 
-    let project = |title: &str, weight: u32, year: u32, desc: &str, stack: &str| {
+    let project = |title: &str, weight: u32, year: u32, desc: &str, stack: &str, date: &str| {
         format!(
             "\
 ---
 title: {title}
+date: {date}
 description: {desc}
 weight: {weight}
 year: {year}
@@ -400,6 +407,7 @@ languages:
                 2025,
                 "A one-line summary of what it is and why it matters.",
                 "Rust, WebAssembly",
+                &ago(21),
             ),
         ),
         (
@@ -410,6 +418,7 @@ languages:
                 2024,
                 "Another thing you made, in a sentence.",
                 "TypeScript, PostgreSQL",
+                &ago(95),
             ),
         ),
         ("content/blog/_index.md", blog_index),
@@ -419,7 +428,7 @@ languages:
             "content/notes/first-note.md",
             note(
                 "Notes are short. Write one in a minute, with *Markdown*, a [link](https://example.com) or a code `snippet`.",
-                today,
+                &ago(3),
                 "meta",
             ),
         ),
@@ -427,8 +436,16 @@ languages:
             "content/notes/reading.md",
             note(
                 "Currently reading something good, and taking notes in public.",
-                today,
+                &ago(12),
                 "reading",
+            ),
+        ),
+        (
+            "content/notes/til.md",
+            note(
+                "TIL: `cargo install --locked` avoids surprise dependency upgrades.",
+                &ago(40),
+                "rust",
             ),
         ),
         ("content/resume.md", resume),
@@ -450,8 +467,8 @@ pub fn new_site(dir: &Path, theme: &str) -> Result<()> {
         return Err(Error::AlreadyExists(dir.join("config.yml")));
     }
     let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
-    let files: Vec<(&str, String)> = if theme == "orbit" {
-        orbit_files(&today)
+    let files: Vec<(&str, String)> = if theme == "orbit" || theme == "devlog" {
+        personal_files(theme, &today)
     } else {
         vec![
             ("config.yml", config_yml(theme)),

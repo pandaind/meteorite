@@ -10,6 +10,9 @@ in a major release.
   notes, resume (from `data/resume.yml`, print-friendly), a links-in-bio page and social icons.
   Light and dark modes, three skins, search, structured data. `meteorite new site --theme orbit`
   creates a starter with sample content for every part
+- New bundled theme `devlog` for software engineers: a repository-style profile with a sidebar,
+  pinned project cards, an activity graph, a commit-log blog, notes as file windows and a
+  changelog resume. It reads the same content as `orbit`, so switching is one line
 - Themes: a section whose `_index.md` sets `full_content: true` puts each page's rendered
   `content` in `section.pages`, `get_pages()` and term pages (for micro-blog streams)
 

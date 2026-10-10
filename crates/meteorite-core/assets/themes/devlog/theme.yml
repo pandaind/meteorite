@@ -1,0 +1,70 @@
+name: devlog
+version: 0.1.0
+description: "A software engineer's site in the style of a repository: profile, pinned projects, activity graph, commit-log blog, notes, changelog resume and links"
+author: Meteorite
+meteorite_api: 1
+skins:
+  - { name: slate, label: Slate, description: "Clean blue on neutral grey (the default look)" }
+  - { name: dracula, label: Dracula, description: "Purple and pink on deep violet" }
+  - { name: gruvbox, label: Gruvbox, description: "Warm amber and cream" }
+params:
+  skin:
+    default: slate
+    description: Starting skin (see the skins list); visitors can switch with the style menu
+  skin_switcher:
+    default: false
+    description: Show the style menu in the top bar
+  color_scheme:
+    default: auto
+    description: "Initial mode: auto (follow the OS), dark or light. Visitors can override with the toggle."
+  theme_toggle:
+    default: true
+    description: Show the light/dark toggle in the top bar
+  handle:
+    default: ""
+    description: Your username, shown under your name on the home page (for example `ada`)
+  tagline:
+    default: ""
+    description: One line used on the links page and in sharing cards
+  avatar:
+    default: ""
+    description: Path under static/ of your photo, shown in the profile sidebar
+  location:
+    default: ""
+    description: Where you are based
+  email:
+    default: ""
+    description: Public contact address, used for the "Email me" button and the resume
+  resume_pdf:
+    default: ""
+    description: Path under static/ of a PDF resume; adds a Download button to the resume page
+  blog_section:
+    default: blog
+    description: Section holding long-form posts
+  notes_section:
+    default: notes
+    description: Section holding short notes
+  projects_section:
+    default: projects
+    description: Section holding projects
+  reading_time:
+    default: true
+    description: Show the estimated reading time on posts
+  show_activity:
+    default: true
+    description: Show the activity graph on the home page (built from the dates of your pages)
+  accent:
+    default: ""
+    description: Override the skin's accent in light mode (any CSS colour)
+  accent_dark:
+    default: ""
+    description: Override the skin's accent in dark mode
+  favicon:
+    default: favicon.svg
+    description: "Path of the site icon, relative to the site root. A file of that name in your site's static/ overrides the theme's; set to an empty string for none"
+  og_image:
+    default: ""
+    description: Default social-sharing image (path under static/); pages can override with `image` in front matter
+  footer_text:
+    default: ""
+    description: Text shown in the status bar (defaults to the site title)

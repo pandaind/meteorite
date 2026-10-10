@@ -110,6 +110,84 @@ static DEFAULT: Bundled = Bundled {
     ],
 };
 
+static DEVLOG: Bundled = Bundled {
+    name: "devlog",
+    files: &[
+        (
+            "static/devlog.css",
+            include_str!("../assets/themes/devlog/static/devlog.css"),
+        ),
+        (
+            "static/devlog.js",
+            include_str!("../assets/themes/devlog/static/devlog.js"),
+        ),
+        (
+            "static/favicon.svg",
+            include_str!("../assets/themes/devlog/static/favicon.svg"),
+        ),
+        (
+            "templates/404.html",
+            include_str!("../assets/themes/devlog/templates/404.html"),
+        ),
+        (
+            "templates/base.html",
+            include_str!("../assets/themes/devlog/templates/base.html"),
+        ),
+        (
+            "templates/index.html",
+            include_str!("../assets/themes/devlog/templates/index.html"),
+        ),
+        (
+            "templates/macros.html",
+            include_str!("../assets/themes/devlog/templates/macros.html"),
+        ),
+        (
+            "templates/page.html",
+            include_str!("../assets/themes/devlog/templates/page.html"),
+        ),
+        (
+            "templates/partials/links.html",
+            include_str!("../assets/themes/devlog/templates/partials/links.html"),
+        ),
+        (
+            "templates/partials/resume.html",
+            include_str!("../assets/themes/devlog/templates/partials/resume.html"),
+        ),
+        (
+            "templates/section.html",
+            include_str!("../assets/themes/devlog/templates/section.html"),
+        ),
+        (
+            "templates/shortcodes/button.html",
+            include_str!("../assets/themes/devlog/templates/shortcodes/button.html"),
+        ),
+        (
+            "templates/shortcodes/figure.html",
+            include_str!("../assets/themes/devlog/templates/shortcodes/figure.html"),
+        ),
+        (
+            "templates/shortcodes/note.html",
+            include_str!("../assets/themes/devlog/templates/shortcodes/note.html"),
+        ),
+        (
+            "templates/shortcodes/youtube.html",
+            include_str!("../assets/themes/devlog/templates/shortcodes/youtube.html"),
+        ),
+        (
+            "templates/taxonomy.html",
+            include_str!("../assets/themes/devlog/templates/taxonomy.html"),
+        ),
+        (
+            "templates/term.html",
+            include_str!("../assets/themes/devlog/templates/term.html"),
+        ),
+        (
+            "theme.yml",
+            include_str!("../assets/themes/devlog/theme.yml"),
+        ),
+    ],
+};
+
 static ORBIT: Bundled = Bundled {
     name: "orbit",
     files: &[
@@ -258,7 +336,7 @@ static TERMINAL: Bundled = Bundled {
     ],
 };
 
-static ALL: &[&Bundled] = &[&DEFAULT, &ORBIT, &TERMINAL];
+static ALL: &[&Bundled] = &[&DEFAULT, &DEVLOG, &ORBIT, &TERMINAL];
 
 pub fn find(name: &str) -> Option<&'static Bundled> {
     ALL.iter().copied().find(|b| b.name == name)

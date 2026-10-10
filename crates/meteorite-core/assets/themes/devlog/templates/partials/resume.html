@@ -1,0 +1,95 @@
+{#- Renders data/resume.yml. Keys: basics {name,label,email,phone,location,url,summary},
+    work [{company,role,start,end,location,summary,highlights}], education [{school,degree,start,end,notes}],
+    skills [{group,items}], projects [{name,url,description}], certifications [{name,issuer,year}],
+    languages [{name,level}]. Everything is optional. -#}
+{% import "macros.html" as m %}
+{% if data.resume %}
+{% set r = data.resume %}
+{% set cp = config.params %}
+<div class="container inner resume">
+  <header class="resume-head">
+    <div>
+      <h1>{{ r.basics.name | default(value=config.title) }}</h1>
+      {% if r.basics.label %}<p class="lead">{{ r.basics.label }}</p>{% endif %}
+      <ul class="resume-contact" role="list">
+        {% set loc = r.basics.location | default(value=cp.location) %}
+        {% if loc %}<li>{{ m::icon(name="pin", size=16) | safe }}{{ loc }}</li>{% endif %}
+        {% set mail = r.basics.email | default(value=cp.email) %}
+        {% if mail %}<li><a href="mailto:{{ mail }}">{{ m::icon(name="mail", size=16) | safe }}{{ mail }}</a></li>{% endif %}
+        {% if r.basics.phone %}<li>{{ r.basics.phone }}</li>{% endif %}
+        {% if r.basics.url %}<li><a href="{{ r.basics.url }}">{{ m::icon(name="globe", size=16) | safe }}{{ r.basics.url | replace(from="https://", to="") }}</a></li>{% endif %}
+      </ul>
+    </div>
+    <div class="resume-actions no-print">
+      {% if cp.resume_pdf %}<a class="btn btn-primary" href="{{ url(path=cp.resume_pdf) }}" download>{{ m::icon(name="download", size=18) | safe }}Download PDF</a>{% endif %}
+      <button type="button" class="btn btn-secondary" data-print hidden>{{ m::icon(name="printer", size=18) | safe }}Print</button>
+    </div>
+  </header>
+
+  {% if r.basics.summary %}<p class="resume-summary">{{ r.basics.summary }}</p>{% endif %}
+  {% if page.content %}<div class="prose resume-intro">{{ page.content | safe }}</div>{% endif %}
+
+  <div class="resume-grid">
+    <div class="resume-main">
+      {% if r.work %}
+      <section aria-labelledby="r-work"><h2 id="r-work">Experience</h2>
+        <ol class="timeline">
+          {% for w in r.work %}
+          <li>
+            <p class="when">{{ w.start }}{% if w.end %} – {{ w.end }}{% else %} – Present{% endif %}</p>
+            <h3>{{ w.role }}</h3>
+            <p class="where">{% if w.url %}<a href="{{ w.url }}">{{ w.company }}</a>{% else %}{{ w.company }}{% endif %}{% if w.location %} · {{ w.location }}{% endif %}</p>
+            {% if w.summary %}<p>{{ w.summary }}</p>{% endif %}
+            {% if w.highlights %}<ul>{% for h in w.highlights %}<li>{{ h }}</li>{% endfor %}</ul>{% endif %}
+          </li>
+          {% endfor %}
+        </ol>
+      </section>
+      {% endif %}
+
+      {% if r.projects %}
+      <section aria-labelledby="r-projects"><h2 id="r-projects">Projects</h2>
+        <ul class="plain">
+          {% for pr in r.projects %}<li><strong>{% if pr.url %}<a href="{{ pr.url }}">{{ pr.name }}</a>{% else %}{{ pr.name }}{% endif %}</strong>{% if pr.description %} · {{ pr.description }}{% endif %}</li>{% endfor %}
+        </ul>
+      </section>
+      {% endif %}
+
+      {% if r.education %}
+      <section aria-labelledby="r-edu"><h2 id="r-edu">Education</h2>
+        <ol class="timeline">
+          {% for e in r.education %}
+          <li>
+            <p class="when">{{ e.start }}{% if e.end %} – {{ e.end }}{% endif %}</p>
+            <h3>{{ e.degree }}</h3>
+            <p class="where">{{ e.school }}</p>
+            {% if e.notes %}<p>{{ e.notes }}</p>{% endif %}
+          </li>
+          {% endfor %}
+        </ol>
+      </section>
+      {% endif %}
+    </div>
+
+    <aside class="resume-side">
+      {% if r.skills %}
+      <section aria-labelledby="r-skills"><h2 id="r-skills">Skills</h2>
+        {% for g in r.skills %}<div class="skill-group"><h3>{{ g.group }}</h3><ul class="chips" role="list">{% for s in g.items %}<li class="chip">{{ s }}</li>{% endfor %}</ul></div>{% endfor %}
+      </section>
+      {% endif %}
+      {% if r.languages %}
+      <section aria-labelledby="r-lang"><h2 id="r-lang">Languages</h2>
+        <ul class="plain">{% for l in r.languages %}<li>{{ l.name }}{% if l.level %} <span class="muted">· {{ l.level }}</span>{% endif %}</li>{% endfor %}</ul>
+      </section>
+      {% endif %}
+      {% if r.certifications %}
+      <section aria-labelledby="r-cert"><h2 id="r-cert">Certifications</h2>
+        <ul class="plain">{% for c in r.certifications %}<li>{{ c.name }}{% if c.issuer %} <span class="muted">· {{ c.issuer }}{% if c.year %}, {{ c.year }}{% endif %}</span>{% endif %}</li>{% endfor %}</ul>
+      </section>
+      {% endif %}
+    </aside>
+  </div>
+</div>
+{% else %}
+<div class="container narrow single"><div class="prose"><h1>{{ page.meta.title }}</h1><p>Add <code>data/resume.yml</code> to fill this page.</p></div></div>
+{% endif %}

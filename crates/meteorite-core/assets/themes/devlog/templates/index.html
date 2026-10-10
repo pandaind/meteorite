@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% import "macros.html" as m %}
+{% block content %}
+{#- Same front matter as the orbit theme (profile, stats, sections, projects, posts, notes,
+    skills, contact), plus an `activity` block. The profile sits in a sidebar, like a repo owner. -#}
+{% set cp = config.params %}
+{% set display_name = page.meta.profile.name | default(value=config.title) %}
+<div class="container home">
+  <aside class="profile" aria-label="Profile">
+    <div class="avatar">{% if cp.avatar %}<img src="{{ url(path=cp.avatar) }}" alt="{{ display_name }}" width="296" height="296">{% else %}<span>{{ display_name | truncate(length=1, end="") | upper }}</span>{% endif %}</div>
+    <h1 class="p-name">{{ display_name }}</h1>
+    {% if cp.handle %}<p class="p-handle">{{ cp.handle }}</p>{% endif %}
+    {% if page.meta.profile.role %}<p class="p-role">{{ page.meta.profile.role }}</p>{% endif %}
+    {% if page.meta.profile.headline %}<p class="p-headline">{{ page.meta.profile.headline }}</p>{% endif %}
+    {% if page.meta.profile.status %}
+    {% set st = page.meta.profile.status %}
+    <p class="status status-{{ st.state | default(value='open') }}"><span class="status-dot" aria-hidden="true"></span>{% if st.url %}<a href="{{ url(path=st.url) }}">{{ st.text }}</a>{% else %}{{ st.text }}{% endif %}</p>
+    {% endif %}
+    {% if page.meta.profile.actions %}
+    <div class="p-actions">
+      {% for a in page.meta.profile.actions %}<a class="btn btn-{{ a.style | default(value='primary') }}" href="{{ url(path=a.url) }}">{{ a.name }}</a>{% endfor %}
+    </div>
+    {% endif %}
+    <ul class="p-facts" role="list">
+      {% if cp.location %}<li>{{ m::icon(name="pin", size=16) | safe }}{{ cp.location }}</li>{% endif %}
+      {% if cp.email %}<li><a href="mailto:{{ cp.email }}">{{ m::icon(name="mail", size=16) | safe }}{{ cp.email }}</a></li>{% endif %}
+    </ul>
+    {% if data.socials and not page.meta.profile.hide_socials %}{{ m::socials(items=data.socials, labels=true) }}{% endif %}
+    {% if page.meta.skills.items %}
+    <div class="p-stack"><h2>Stack</h2><ul class="chips" role="list">{% for s in page.meta.skills.items %}<li class="chip">{{ m::lang_dot(name=s) }}{{ s }}</li>{% endfor %}</ul></div>
+    {% endif %}
+  </aside>
+
+  <div class="home-main">
+    {% if page.content %}
+    <section class="readme" aria-label="README">
+      <header class="panel-bar">{{ m::icon(name="book", size=15) | safe }}<span>README.md</span></header>
+      <div class="prose readme-body">{{ page.content | safe }}</div>
+    </section>
+    {% endif %}
+
+    {% if page.meta.stats %}
+    <section class="stats" aria-label="Highlights">
+      {% for s in page.meta.stats %}<div class="stat"><strong>{{ s.value }}</strong><span>{{ s.label }}</span></div>{% endfor %}
+    </section>
+    {% endif %}
+
+    {% set order = page.meta.sections | default(value=["projects", "activity", "posts", "notes", "contact"]) %}
+    {% for block in order %}
+
+    {% if block == "projects" %}
+    {% set sec = page.meta.projects.section | default(value=cp.projects_section) %}
+    {% set lim = page.meta.projects.limit | default(value=4) %}
+    {% set items = get_pages(section=sec, limit=lim) %}
+    {% if items | length > 0 %}
+    <section class="block" id="projects">
+      <header class="block-head"><h2>{{ page.meta.projects.title | default(value="Pinned") }}</h2><a class="more" href="{{ url(path='/' ~ sec ~ '/') }}">{{ page.meta.projects.link_text | default(value="All projects") }} {{ m::icon(name="arrow", size=14) | safe }}</a></header>
+      <div class="repo-grid">{% for p in items %}{{ m::project_card(p=p) }}{% endfor %}</div>
+    </section>
+    {% endif %}
+
+    {% elif block == "activity" %}
+    {% if cp.show_activity %}
+    <section class="block" id="activity">
+      <header class="block-head"><h2>{{ page.meta.activity.title | default(value="Activity") }}</h2><span class="muted" id="activity-total"></span></header>
+      <div class="activity" id="activity-graph" aria-label="Contribution graph of posts, notes and projects by date" role="img"></div>
+      <script type="application/json" id="activity-data">[{% for ap in get_pages(section="") %}{% if ap.date %}{{ ap.date | json_encode | safe }},{% endif %}{% endfor %}""]</script>
+    </section>
+    {% endif %}
+
+    {% elif block == "posts" %}
+    {% set sec = page.meta.posts.section | default(value=cp.blog_section) %}
+    {% set lim = page.meta.posts.limit | default(value=4) %}
+    {% set items = get_pages(section=sec, limit=lim) %}
+    {% if items | length > 0 %}
+    <section class="block" id="writing">
+      <header class="block-head"><h2>{{ page.meta.posts.title | default(value="Writing") }}</h2><a class="more" href="{{ url(path='/' ~ sec ~ '/') }}">{{ page.meta.posts.link_text | default(value="All posts") }} {{ m::icon(name="arrow", size=14) | safe }}</a></header>
+      <div class="log">{% for p in items %}{{ m::post_row(p=p, reading_time=cp.reading_time) }}{% endfor %}</div>
+    </section>
+    {% endif %}
+
+    {% elif block == "notes" %}
+    {% set sec = page.meta.notes.section | default(value=cp.notes_section) %}
+    {% set lim = page.meta.notes.limit | default(value=3) %}
+    {% set items = get_pages(section=sec, limit=lim) %}
+    {% if items | length > 0 %}
+    <section class="block" id="notes">
+      <header class="block-head"><h2>{{ page.meta.notes.title | default(value="Notes") }}</h2><a class="more" href="{{ url(path='/' ~ sec ~ '/') }}">{{ page.meta.notes.link_text | default(value="All notes") }} {{ m::icon(name="arrow", size=14) | safe }}</a></header>
+      <div class="note-stream">{% for p in items %}{{ m::note(p=p) }}{% endfor %}</div>
+    </section>
+    {% endif %}
+
+    {% elif block == "skills" %}
+    {% if page.meta.skills.items or data.resume.skills %}
+    <section class="block" id="skills">
+      <header class="block-head"><h2>{{ page.meta.skills.title | default(value="Skills") }}</h2></header>
+      {% if page.meta.skills.items %}
+      <ul class="chips" role="list">{% for s in page.meta.skills.items %}<li class="chip">{{ m::lang_dot(name=s) }}{{ s }}</li>{% endfor %}</ul>
+      {% else %}
+      <div class="skill-groups">{% for g in data.resume.skills %}<div class="skill-group"><h3>{{ g.group }}</h3><ul class="chips" role="list">{% for s in g.items %}<li class="chip">{{ m::lang_dot(name=s) }}{{ s }}</li>{% endfor %}</ul></div>{% endfor %}</div>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    {% elif block == "experience" %}
+    {% if data.resume.work %}
+    <section class="block" id="experience">
+      <header class="block-head"><h2>Experience</h2><a class="more" href="{{ url(path='/resume/') }}">Full resume {{ m::icon(name="arrow", size=14) | safe }}</a></header>
+      <ol class="timeline">
+        {% for w in data.resume.work | slice(end=3) %}<li><p class="when">{{ w.start }}{% if w.end %} – {{ w.end }}{% else %} – Present{% endif %}</p><h3>{{ w.role }}</h3><p class="where">{{ w.company }}{% if w.location %} · {{ w.location }}{% endif %}</p></li>{% endfor %}
+      </ol>
+    </section>
+    {% endif %}
+
+    {% elif block == "contact" %}
+    {% if page.meta.contact.title %}
+    <section class="block" id="contact">
+      <div class="contact">
+        <h2>{{ page.meta.contact.title }}</h2>
+        {% if page.meta.contact.text %}<p>{{ page.meta.contact.text }}</p>{% endif %}
+        <div class="p-actions">
+          {% if page.meta.contact.email or cp.email %}<a class="btn btn-primary" href="mailto:{{ page.meta.contact.email | default(value=cp.email) }}">{{ m::icon(name="mail", size=16) | safe }}Email me</a>{% endif %}
+          {% for a in page.meta.contact.actions | default(value=[]) %}<a class="btn btn-{{ a.style | default(value='secondary') }}" href="{{ url(path=a.url) }}">{{ a.name }}</a>{% endfor %}
+        </div>
+      </div>
+    </section>
+    {% endif %}
+
+    {% endif %}
+    {% endfor %}
+  </div>
+</div>
+{% endblock content %}

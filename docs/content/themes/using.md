@@ -2,13 +2,14 @@
 title: Using themes
 weight: 1
 ---
-A theme is a directory under `themes/`. Meteorite bundles three, available offline:
+A theme is a directory under `themes/`. Meteorite bundles four, available offline:
 
 | Theme | Look |
 |---|---|
 | `default` | Clean and readable. Light and dark modes. |
 | `terminal` | Monospace terminal look: prompt and `[nav]` links, a terminal window for the install command, blinking cursor. Dark by default, with a light mode. |
 | `orbit` | A personal site: profile home page, projects, blog, micro-blog notes, resume and a links page. Light and dark modes, three skins. |
+| `devlog` | A software engineer's site dressed like a repository: profile sidebar, pinned projects, activity graph, commit-log blog, notes as files, changelog resume. Reads the same content as `orbit`. |
 
 ```sh
 meteorite theme list
@@ -103,6 +104,7 @@ the colours but not the markup. Both bundled themes do:
 | `default` | `meteor` (default), `paper` (warm, serif headings), `aurora` (teal and violet) |
 | `terminal` | `green` (default), `amber`, `mono` |
 | `orbit` | `ink` (default), `sunset`, `mint` |
+| `devlog` | `slate` (default), `dracula`, `gruvbox` |
 
 Visitors get a palette button in the header; their choice is remembered like the light/dark
 mode, and every skin works in both modes. Set the starting skin, or hide the menu:

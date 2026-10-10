@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% import "macros.html" as m %}
+{% block content %}
+<div class="container inner">
+  {{ m::crumbs(sec_name=taxonomy.name, sec_url=taxonomy.url, here=term.name) }}
+  <header class="inner-head"><h1>{{ term.name }}</h1></header>
+  <div class="log">{% for p in pages %}{% if p.content %}{{ m::note(p=p) }}{% else %}{{ m::post_row(p=p, reading_time=config.params.reading_time) }}{% endif %}{% endfor %}</div>
+</div>
+{% endblock content %}

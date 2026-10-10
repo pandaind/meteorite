@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% import "macros.html" as m %}
+{% block content %}
+<div class="container inner">
+  {{ m::crumbs(here=taxonomy.name | lower) }}
+  <header class="inner-head"><h1>{{ taxonomy.name | title }}</h1></header>
+  <ul class="chips" role="list">{% for t in terms %}<li><a class="chip" href="{{ url(path=t.url) }}">{{ t.name }} <span class="count">{{ t.count }}</span></a></li>{% endfor %}</ul>
+</div>
+{% endblock content %}

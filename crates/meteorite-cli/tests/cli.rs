@@ -1614,3 +1614,41 @@ fn orbit_starter_builds_a_personal_site() {
     let project = read(&site, "projects/first-project/index.html");
     assert!(project.contains("project-facts") && project.contains("Rust"));
 }
+
+#[test]
+fn devlog_starter_builds_and_shares_content_with_orbit() {
+    let dir = tmp("devlog");
+    let site = dir.join("s");
+    ok(
+        &dir,
+        &["new", "site", site.to_str().unwrap(), "--theme", "devlog"],
+    );
+    ok(&site, &["build"]);
+    ok(&site, &["check"]);
+
+    let home = read(&site, "index.html");
+    assert!(home.contains("README.md") && home.contains("repo-card"));
+    assert!(
+        home.contains("id=\"activity-data\""),
+        "activity graph data is embedded"
+    );
+    assert!(home.contains("lang-dot"), "stack entries get language dots");
+    assert!(
+        home.contains("note-win"),
+        "recent notes appear on the home page"
+    );
+    assert!(read(&site, "notes/index.html").contains("Write one in a minute"));
+    assert!(read(&site, "resume/index.html").contains("Senior Engineer"));
+    assert!(read(&site, "projects/first-project/index.html").contains("project-facts"));
+
+    // The same content renders under the sibling theme: switch themes and build again.
+    ok(&site, &["theme", "add", "orbit"]);
+    let cfg = fs::read_to_string(site.join("config.yml")).unwrap();
+    fs::write(
+        site.join("config.yml"),
+        cfg.replace("theme: devlog", "theme: orbit"),
+    )
+    .unwrap();
+    ok(&site, &["build"]);
+    assert!(read(&site, "index.html").contains("hero-title"));
+}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% import "macros.html" as m %}
+{% block content %}
+{#- `layout:` in a section's _index.md: `list` (default, a commit log), `projects` (repository
+    cards), `notes` (file windows) or `archive` (dates and titles). -#}
+{% set layout = section.meta.layout | default(value="list") %}
+<div class="container inner">
+  {{ m::crumbs(here=section.title | lower) }}
+  <header class="inner-head">
+    <h1>{{ section.title }}</h1>
+    {% if section.description %}<p class="lead">{{ section.description }}</p>{% endif %}
+  </header>
+  {% if page.content %}<div class="prose intro">{{ page.content | safe }}</div>{% endif %}
+
+  {% if section.subsections %}
+  <div class="repo-grid">
+    {% for s in section.subsections %}<a class="repo-card spot" href="{{ url(path=s.url) }}"><span class="repo-head">{{ m::icon(name="folder", size=16) | safe }}<strong>{{ s.title }}</strong></span>{% if s.description %}<span class="repo-desc">{{ s.description }}</span>{% endif %}</a>{% endfor %}
+  </div>
+  {% endif %}
+
+  {% if layout == "projects" %}
+  <div class="repo-grid">{% for p in section.pages %}{{ m::project_card(p=p) }}{% endfor %}</div>
+  {% elif layout == "notes" %}
+  <div class="note-stream">{% for p in section.pages %}{{ m::note(p=p) }}{% endfor %}</div>
+  {% elif layout == "archive" %}
+  <ul class="archive" role="list">{% for p in section.pages %}<li><span class="log-date">{{ p.date | default(value="") }}</span><a href="{{ url(path=p.url) }}">{{ p.meta.title }}</a></li>{% endfor %}</ul>
+  {% else %}
+  <div class="log">{% for p in section.pages %}{{ m::post_row(p=p, reading_time=config.params.reading_time) }}{% endfor %}</div>
+  {% endif %}
+
+  {% if paginator.total_pages > 1 %}
+  <nav class="pagination" aria-label="Pagination">
+    {% if paginator.prev_url %}<a class="btn btn-secondary btn-sm" href="{{ url(path=paginator.prev_url) }}">← Newer</a>{% else %}<span></span>{% endif %}
+    <span class="muted">Page {{ paginator.number }} of {{ paginator.total_pages }}</span>
+    {% if paginator.next_url %}<a class="btn btn-secondary btn-sm" href="{{ url(path=paginator.next_url) }}">Older →</a>{% else %}<span></span>{% endif %}
+  </nav>
+  {% endif %}
+</div>
+{% endblock content %}

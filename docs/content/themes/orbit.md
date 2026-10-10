@@ -13,6 +13,9 @@ cd me && meteorite serve
 
 The starter has sample content for every part, so you only replace the words.
 
+The `devlog` theme reads exactly the same content and data files, so you can switch between the
+two with one line in `config.yml` and compare.
+
 ## What is in it
 
 | Part | Where | Notes |

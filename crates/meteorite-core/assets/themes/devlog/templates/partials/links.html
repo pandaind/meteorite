@@ -1,0 +1,20 @@
+{#- A link-in-bio page: avatar, name, a line about you, then a stack of big buttons. Buttons
+    come from `links:` in the page's front matter, followed by data/socials.yml. -#}
+{% import "macros.html" as m %}
+{% set cp = config.params %}
+<div class="container links">
+  <header class="links-head">
+    {% if cp.avatar %}<img class="links-avatar" src="{{ url(path=cp.avatar) }}" alt="" width="96" height="96">{% endif %}
+    <h1>{{ page.meta.title | default(value=config.title) }}</h1>
+    {% if page.meta.description %}<p class="lead">{{ page.meta.description }}</p>{% elif cp.tagline %}<p class="lead">{{ cp.tagline }}</p>{% endif %}
+  </header>
+  <ul class="link-list" role="list">
+    {% for l in page.meta.links | default(value=[]) %}
+    <li><a class="link-btn" href="{{ url(path=l.url) }}">{{ m::icon(name=l.icon | default(value="link"), size=20) | safe }}<span><strong>{{ l.title }}</strong>{% if l.description %}<small>{{ l.description }}</small>{% endif %}</span>{{ m::icon(name="arrow", size=16) | safe }}</a></li>
+    {% endfor %}
+    {% for s in data.socials | default(value=[]) %}
+    <li><a class="link-btn" href="{{ s.url }}" rel="me noopener">{{ m::icon(name=s.icon | default(value="link"), size=20) | safe }}<span><strong>{{ s.name }}</strong>{% if s.handle %}<small>{{ s.handle }}</small>{% endif %}</span>{{ m::icon(name="arrow", size=16) | safe }}</a></li>
+    {% endfor %}
+  </ul>
+  {% if page.content %}<div class="prose links-note">{{ page.content | safe }}</div>{% endif %}
+</div>
