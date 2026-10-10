@@ -160,6 +160,11 @@ pub struct KnowledgeConfig {
     /// Name of the environment variable holding the persona API key. The key itself must
     /// never be written in config.yml.
     pub key_env: String,
+    /// Also publish every exported page as one versioned JSON file in the site output, so
+    /// poptalk-rag can pull it from the live site instead of needing files copied to it.
+    pub publish: bool,
+    /// Path of that file in the output, relative to the site root.
+    pub publish_path: String,
 }
 
 impl Default for ChatConfig {
@@ -188,6 +193,8 @@ impl Default for KnowledgeConfig {
             exclude: Vec::new(),
             rag_url: String::new(),
             key_env: "POPTALK_RAG_KEY".into(),
+            publish: false,
+            publish_path: "knowledge.json".into(),
         }
     }
 }
@@ -268,6 +275,21 @@ impl ChatConfig {
         let k = &self.knowledge;
         if !k.rag_url.is_empty() && !http(&k.rag_url) {
             return Err(bad("knowledge.rag_url", "must be an http(s) URL"));
+        }
+        {
+            let p = &k.publish_path;
+            let ok = !p.is_empty()
+                && p.ends_with(".json")
+                && !p.starts_with('/')
+                && !p.contains('\\')
+                && p.split('/')
+                    .all(|seg| !seg.is_empty() && seg != "." && seg != "..");
+            if !ok {
+                return Err(bad(
+                    "knowledge.publish_path",
+                    "must be a relative path ending in .json, such as knowledge.json",
+                ));
+            }
         }
         if !k
             .key_env

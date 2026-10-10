@@ -329,12 +329,30 @@ impl Builder {
             .collect();
 
         // Collect outputs. Later inserts win: theme static < site static < assets < pages.
+        // The knowledge base is collected once and used for the directory export and/or the
+        // published JSON file. Publishing is site output, so `serve` and `check` include it.
+        let k = &config.chat.knowledge;
+        let wants_dir_export = !k.dir.trim().is_empty() && !opts.skip_knowledge_export;
+        let knowledge_docs = if wants_dir_export || k.publish {
+            crate::knowledge::collect(&config, &site, &tera)?
+        } else {
+            Vec::new()
+        };
+
         let mut outputs: HashMap<PathBuf, Source> = HashMap::new();
         if let Some(w) = &chat_widget {
             outputs.insert(PathBuf::from(&w.path), Source::Bytes(w.bytes.clone()));
             outputs.insert(
                 PathBuf::from(w.license_path),
                 Source::Bytes(w.license.clone().into_bytes()),
+            );
+        }
+        if k.publish {
+            outputs.insert(
+                PathBuf::from(&k.publish_path),
+                Source::Bytes(
+                    crate::knowledge::published_json(&config, &knowledge_docs).into_bytes(),
+                ),
             );
         }
         if config.markdown.highlight {
@@ -429,10 +447,10 @@ impl Builder {
         self.last_outputs = now;
         self.last_out_dir = Some(out_dir.clone());
 
-        let knowledge = if opts.skip_knowledge_export {
-            None
+        let knowledge = if wants_dir_export {
+            crate::knowledge::export(&root, &config, &knowledge_docs)?
         } else {
-            crate::knowledge::export(&root, &config, &site, &tera)?
+            None
         };
 
         Ok(BuildReport {

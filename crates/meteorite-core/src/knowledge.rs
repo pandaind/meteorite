@@ -10,6 +10,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use serde_norway::Value;
+use sha2::{Digest, Sha256};
 use tera::{Context, Tera};
 
 use crate::config::Config;
@@ -28,13 +29,131 @@ pub struct ExportReport {
     pub removed: usize,
 }
 
-/// Export the site if `chat.knowledge.dir` is set. Returns `None` when it is not.
-pub fn export(
-    root: &Path,
-    config: &Config,
-    site: &Site,
-    tera: &Tera,
-) -> Result<Option<ExportReport>> {
+/// One exportable page: everything a retrieval index needs, independent of the output format.
+#[derive(Debug, Clone)]
+pub struct KnowledgeDoc {
+    /// File name relative to the persona folder, for example `guide/start.md`.
+    pub path: String,
+    pub title: String,
+    /// Absolute public URL of the page.
+    pub url: String,
+    pub section: String,
+    pub date: Option<String>,
+    pub description: Option<String>,
+    pub tags: Vec<String>,
+    /// Content path of the source file, for example `guide/start.md`.
+    pub source: String,
+    /// Markdown body (a title heading, the description, the page text and home-page blocks).
+    pub body: String,
+}
+
+impl KnowledgeDoc {
+    /// The document as a Markdown file with YAML front matter, as poptalk-rag ingests it.
+    fn to_file_text(&self) -> Result<String> {
+        let mut front: BTreeMap<&str, Value> = BTreeMap::new();
+        front.insert("title", Value::String(self.title.clone()));
+        front.insert("url", Value::String(self.url.clone()));
+        front.insert("section", Value::String(self.section.clone()));
+        front.insert("source", Value::String(self.source.clone()));
+        if let Some(d) = &self.date {
+            front.insert("date", Value::String(d.clone()));
+        }
+        if let Some(d) = &self.description {
+            front.insert("description", Value::String(d.clone()));
+        }
+        if !self.tags.is_empty() {
+            front.insert(
+                "tags",
+                Value::Sequence(self.tags.iter().cloned().map(Value::String).collect()),
+            );
+        }
+        let yaml = serde_norway::to_string(&front).map_err(|e| Error::Msg(e.to_string()))?;
+        Ok(format!("---\n{yaml}---\n\n{}", self.body))
+    }
+
+    fn content_hash(&self) -> String {
+        let digest = Sha256::digest(self.body.as_bytes());
+        format!(
+            "sha256:{}",
+            digest
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect::<String>()
+        )
+    }
+}
+
+/// Collect the published pages that pass `include` / `exclude` / `chat: false`.
+pub fn collect(config: &Config, site: &Site, tera: &Tera) -> Result<Vec<KnowledgeDoc>> {
+    let k = &config.chat.knowledge;
+    let mut docs = Vec::new();
+    for page in &site.all {
+        if !wanted(page, &k.include, &k.exclude) {
+            continue;
+        }
+        docs.push(document(page, tera)?);
+    }
+    docs.sort_by(|a, b| a.path.cmp(&b.path));
+    Ok(docs)
+}
+
+/// Version of the published JSON layout. poptalk-rag refuses versions it does not know.
+pub const MANIFEST_VERSION: u64 = 1;
+
+/// The single-file form of the knowledge base, for `chat.knowledge.publish`. Deterministic:
+/// no timestamps, keys sorted, documents ordered by path, so unchanged content is byte-identical.
+pub fn published_json(config: &Config, docs: &[KnowledgeDoc]) -> String {
+    use tera::Value as J;
+    let mut digest_input = String::new();
+    let documents: Vec<J> = docs
+        .iter()
+        .map(|d| {
+            let hash = d.content_hash();
+            digest_input.push_str(&format!("{}\0{}\n", d.path, hash));
+            let mut m = tera::Map::new();
+            m.insert("path".into(), J::String(d.path.clone()));
+            m.insert("title".into(), J::String(d.title.clone()));
+            m.insert("url".into(), J::String(d.url.clone()));
+            m.insert("section".into(), J::String(d.section.clone()));
+            if let Some(date) = &d.date {
+                m.insert("date".into(), J::String(date.clone()));
+            }
+            if let Some(desc) = &d.description {
+                m.insert("description".into(), J::String(desc.clone()));
+            }
+            m.insert(
+                "tags".into(),
+                J::Array(d.tags.iter().cloned().map(J::String).collect()),
+            );
+            m.insert("hash".into(), J::String(hash));
+            m.insert("content".into(), J::String(d.body.clone()));
+            J::Object(m)
+        })
+        .collect();
+    let digest = Sha256::digest(digest_input.as_bytes());
+    let mut top = tera::Map::new();
+    top.insert("version".into(), J::from(MANIFEST_VERSION));
+    top.insert(
+        "generator".into(),
+        J::String(format!("meteorite {}", env!("CARGO_PKG_VERSION"))),
+    );
+    top.insert("site".into(), J::String(config.base_url.clone()));
+    top.insert(
+        "digest".into(),
+        J::String(format!(
+            "sha256:{}",
+            digest
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect::<String>()
+        )),
+    );
+    top.insert("documents".into(), J::Array(documents));
+    J::Object(top).to_string()
+}
+
+/// Write `docs` into `chat.knowledge.dir` if it is set. Returns `None` when it is not.
+pub fn export(root: &Path, config: &Config, docs: &[KnowledgeDoc]) -> Result<Option<ExportReport>> {
     let k = &config.chat.knowledge;
     if k.dir.trim().is_empty() {
         return Ok(None);
@@ -54,12 +173,9 @@ pub fn export(
 
     let mut current: BTreeSet<String> = BTreeSet::new();
     let (mut written, mut unchanged) = (0, 0);
-    for page in &site.all {
-        if !wanted(page, &k.include, &k.exclude) {
-            continue;
-        }
-        let rel = relative_path(page);
-        let text = document(page, config, tera)?;
+    for doc in docs {
+        let rel = doc.path.clone();
+        let text = doc.to_file_text()?;
         let target = dir.join(&rel);
         if let Ok(existing) = fs::read_to_string(&target) {
             if existing == text {
@@ -171,43 +287,38 @@ fn relative_path(page: &Page) -> String {
     }
 }
 
-fn document(page: &Page, config: &Config, tera: &Tera) -> Result<String> {
-    let mut front: BTreeMap<&str, Value> = BTreeMap::new();
-    front.insert("title", Value::String(page.meta.title.clone()));
-    front.insert("url", Value::String(page.permalink.clone()));
-    front.insert("section", Value::String(page.section.clone()));
-    front.insert(
-        "source",
-        Value::String(page.source.display().to_string().replace('\\', "/")),
-    );
-    if let Some(d) = &page.date {
-        front.insert("date", Value::String(d.clone()));
-    }
-    if let Some(d) = page.meta.description.as_deref().filter(|d| !d.is_empty()) {
-        front.insert("description", Value::String(d.to_string()));
-    }
-    if !page.meta.tags.is_empty() {
-        front.insert(
-            "tags",
-            Value::Sequence(page.meta.tags.iter().cloned().map(Value::String).collect()),
-        );
-    }
-    let yaml = serde_norway::to_string(&front).map_err(|e| Error::Msg(e.to_string()))?;
+fn document(page: &Page, tera: &Tera) -> Result<KnowledgeDoc> {
+    let description = page
+        .meta
+        .description
+        .as_deref()
+        .filter(|d| !d.is_empty())
+        .map(str::to_string);
 
-    let mut out = format!("---\n{yaml}---\n\n# {}\n\n", page.meta.title);
-    if let Some(d) = page.meta.description.as_deref().filter(|d| !d.is_empty()) {
-        out.push_str(d);
-        out.push_str("\n\n");
+    let mut body = format!("# {}\n\n", page.meta.title);
+    if let Some(d) = &description {
+        body.push_str(d);
+        body.push_str("\n\n");
     }
-    out.push_str(plain_body(page, tera)?.trim());
-    out.push('\n');
+    body.push_str(plain_body(page, tera)?.trim());
+    body.push('\n');
     let blocks = front_matter_prose(&page.meta.extra);
     if !blocks.is_empty() {
-        out.push('\n');
-        out.push_str(&blocks);
+        body.push('\n');
+        body.push_str(&blocks);
     }
-    let _ = config;
-    Ok(out)
+
+    Ok(KnowledgeDoc {
+        path: relative_path(page),
+        title: page.meta.title.clone(),
+        url: page.permalink.clone(),
+        section: page.section.clone(),
+        date: page.date.clone(),
+        description,
+        tags: page.meta.tags.clone(),
+        source: page.source.display().to_string().replace('\\', "/"),
+        body,
+    })
 }
 
 /// The page body with shortcodes replaced by their text content.

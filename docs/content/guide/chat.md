@@ -100,10 +100,55 @@ What is exported, and what is not:
 - The folder must be outside the site (not `content/`, `themes/`, `public/` or the site root).
 - `serve` and `check` never export; `meteorite build --no-export` skips it too.
 
-### Re-index after deploying
+### Getting the knowledge to poptalk-rag
 
-poptalk-rag polls its folder, so exported files are picked up on their own. To trigger a pass
-immediately, for example from CI:
+poptalk-rag reads a folder, and your server is usually not the machine that builds the site. Pick
+the delivery that fits:
+
+| | How | When to use it |
+|---|---|---|
+| **Publish and pull** (recommended) | Meteorite publishes `knowledge.json` with the site; poptalk-rag fetches it | The site and the RAG server are on different hosts |
+| **Shared folder** | `chat.knowledge.dir` points straight at poptalk-rag's `knowledge/<persona>/` | Build and RAG run on the same machine, or share a volume |
+| **Copy in CI** | `meteorite build`, then `rsync` the export folder to the server | You already deploy by SSH |
+
+#### Publish and pull
+
+```yaml
+chat:
+  provider: poptalk
+  api_url: https://chat.example.com
+  knowledge:
+    publish: true            # writes public/knowledge.json with the site
+```
+
+On the poptalk-rag server:
+
+```env
+KNOWLEDGE_SITE_SOURCES=my-site=https://example.com/knowledge.json
+```
+
+That is the whole setup. There is nothing to upload, no SSH key in CI and no extra credential:
+what poptalk-rag fetches is exactly what is live, and it is only content that is already public.
+
+`knowledge.json` is a versioned, deterministic file (no timestamps; documents ordered by path),
+with a content hash per document and a digest for the whole file:
+
+```json
+{ "version": 1, "generator": "meteorite 0.3.0", "site": "https://example.com/",
+  "digest": "sha256:...",
+  "documents": [ { "path": "guide/start.md", "title": "Getting started",
+                   "url": "https://example.com/guide/start/", "section": "guide",
+                   "tags": ["intro"], "hash": "sha256:...", "content": "# Getting started\n..." } ] }
+```
+
+poptalk-rag uses it conservatively: an unreachable site, a bad response, an unknown version or an
+empty list changes nothing, so a site outage never erases a knowledge base. Unchanged sites cost
+one conditional request. Change the file name with `knowledge.publish_path`.
+
+#### Re-index immediately
+
+poptalk-rag polls on its own (every 10 minutes for site sources). To trigger a pass right after a
+deploy, for example from CI:
 
 ```sh
 export POPTALK_RAG_KEY=...      # the persona's key; never put it in config.yml

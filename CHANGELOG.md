@@ -15,6 +15,9 @@ in a major release.
   - `meteorite chat check` verifies the backend and CORS; `meteorite chat sync` triggers a
     re-index with a key read from the environment
   - credential-looking keys under `chat:` are refused
+- `chat.knowledge.publish: true` also writes the knowledge base as one versioned, deterministic
+  `knowledge.json` in the site output, so poptalk-rag can pull it from the live site
+  (`KNOWLEDGE_SITE_SOURCES`) instead of needing files copied to its server
 - `build --no-export`; the dev theme picker moved to the bottom-left of the page
 
 ## [0.2.0]

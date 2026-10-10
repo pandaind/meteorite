@@ -1053,6 +1053,115 @@ fn knowledge_export_refuses_unsafe_targets() {
     }
 }
 
+#[test]
+fn knowledge_can_be_published_as_one_deterministic_json_file() {
+    use sha2::{Digest, Sha256};
+    let site = fixture_copy("publish");
+    with_chat(
+        &site,
+        "  knowledge:\n    publish: true\n    exclude: [news]\n",
+    );
+    ok(&site, &["build"]);
+    let first = read(&site, "knowledge.json");
+    let v: serde_json::Value = serde_json::from_str(&first).expect("valid JSON");
+
+    assert_eq!(v["version"], 1);
+    assert!(v["generator"].as_str().unwrap().starts_with("meteorite "));
+    assert_eq!(v["site"], "https://fixture.test/");
+    let docs = v["documents"].as_array().unwrap();
+    let paths: Vec<&str> = docs.iter().map(|d| d["path"].as_str().unwrap()).collect();
+    let mut sorted = paths.clone();
+    sorted.sort();
+    assert_eq!(paths, sorted, "documents are ordered by path");
+    assert!(paths.contains(&"blog/a.md") && paths.contains(&"index.md"));
+    for absent in ["draft.md", "future.md", "news/index.md"] {
+        assert!(!paths.contains(&absent), "{absent} must not be published");
+    }
+
+    // Each document carries what is needed to cite it, and a hash of exactly its content.
+    let a = docs.iter().find(|d| d["path"] == "blog/a.md").unwrap();
+    assert_eq!(a["title"], "Alpha");
+    assert_eq!(a["url"], "https://fixture.test/blog/a/");
+    assert_eq!(a["section"], "blog");
+    assert_eq!(a["date"], "2026-01-01");
+    assert!(a["tags"].as_array().unwrap().iter().any(|t| t == "rust"));
+    let content = a["content"].as_str().unwrap();
+    assert!(!content.starts_with("---"), "content has no front matter");
+    assert!(content.starts_with("# Alpha") && content.contains("Careful with **Alpha**"));
+    let want = format!(
+        "sha256:{}",
+        Sha256::digest(content.as_bytes())
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<String>()
+    );
+    assert_eq!(a["hash"], want);
+
+    // Identical content gives a byte-identical file; editing a page changes the digest.
+    ok(&site, &["build"]);
+    assert_eq!(
+        read(&site, "knowledge.json"),
+        first,
+        "no timestamps or ordering noise"
+    );
+    fs::write(
+        site.join("content/about.md"),
+        "---\ntitle: About\n---\nChanged.\n",
+    )
+    .unwrap();
+    ok(&site, &["build"]);
+    let v2: serde_json::Value = serde_json::from_str(&read(&site, "knowledge.json")).unwrap();
+    assert_ne!(v2["digest"], v["digest"]);
+    let unchanged = |name: &str, a: &serde_json::Value, b: &serde_json::Value| {
+        let find = |v: &serde_json::Value| {
+            v["documents"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|d| d["path"] == name)
+                .unwrap()["hash"]
+                .clone()
+        };
+        assert_eq!(find(a), find(b), "{name} did not change");
+    };
+    unchanged("blog/a.md", &v, &v2);
+}
+
+#[test]
+fn knowledge_is_not_published_unless_asked_and_the_path_is_validated() {
+    let site = fixture_copy("publish-off");
+    ok(&site, &["build"]);
+    assert!(!site.join("public/knowledge.json").exists());
+
+    for (name, path) in [
+        ("up", "../x.json"),
+        ("abs", "/x.json"),
+        ("ext", "notes.txt"),
+        ("back", "a\\b.json"),
+    ] {
+        let site = fixture_copy(&format!("publish-bad-{name}"));
+        with_chat(
+            &site,
+            &format!("  knowledge:\n    publish: true\n    publish_path: '{path}'\n"),
+        );
+        let out = run(&site, &["build"]);
+        assert!(!out.status.success(), "{path} must be rejected");
+        assert!(
+            flat(&String::from_utf8_lossy(&out.stderr)).contains("publish_path"),
+            "{path}"
+        );
+    }
+
+    // A custom location inside the output works.
+    let site = fixture_copy("publish-custom");
+    with_chat(
+        &site,
+        "  knowledge:\n    publish: true\n    publish_path: data/kb.json\n",
+    );
+    ok(&site, &["build"]);
+    assert!(site.join("public/data/kb.json").is_file());
+}
+
 /// A one-connection-at-a-time HTTP server that records raw requests.
 fn fake_backend(
     status: u16,
