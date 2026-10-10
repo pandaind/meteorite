@@ -8,7 +8,7 @@ homepage.workspace = true
 readme = "../../README.md"
 rust-version.workspace = true
 description = "Core library for the Meteorite static site generator"
-keywords = ["static-site-generator", "markdown", "ssg", "themes"]
+keywords = ["static-site", "markdown", "ssg", "themes"]
 categories = ["web-programming", "template-engine"]
 # The integration tests use fixtures that live in the CLI crate.
 exclude = ["tests/"]
