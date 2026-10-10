@@ -6,6 +6,11 @@ in a major release.
 
 ## [Unreleased]
 
+- Fixed: sites built with the bundled themes had no favicon (no icon link, `/favicon.ico` 404).
+  Both themes (0.5.1) now ship a `favicon.svg`; override it with a `static/favicon.svg` or the
+  `favicon` theme parameter, or set it to `""` to omit the link. Run `meteorite theme update`
+  to get it in an existing site
+
 ## [0.3.0]
 
 - Optional PopTalk chat assistant (`chat:` in `config.yml`, off by default):

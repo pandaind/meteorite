@@ -48,6 +48,10 @@ static DEFAULT: Bundled = Bundled {
             include_str!("../assets/themes/default/static/app.js"),
         ),
         (
+            "static/favicon.svg",
+            include_str!("../assets/themes/default/static/favicon.svg"),
+        ),
+        (
             "static/style.css",
             include_str!("../assets/themes/default/static/style.css"),
         ),
@@ -112,6 +116,10 @@ static TERMINAL: Bundled = Bundled {
         (
             "static/app.js",
             include_str!("../assets/themes/terminal/static/app.js"),
+        ),
+        (
+            "static/favicon.svg",
+            include_str!("../assets/themes/terminal/static/favicon.svg"),
         ),
         (
             "static/terminal.css",

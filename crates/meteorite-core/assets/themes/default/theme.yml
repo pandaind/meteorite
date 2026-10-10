@@ -1,5 +1,5 @@
 name: default
-version: 0.5.0
+version: 0.5.1
 description: Marketing-ready landing page and docs/blog theme with light and dark modes
 author: Meteorite
 meteorite_api: 1
@@ -26,6 +26,9 @@ params:
   accent_dark:
     default: "#8b90ff"
     description: Accent colour in dark mode
+  favicon:
+    default: favicon.svg
+    description: "Path of the site icon, relative to the site root. A file of that name in your site's static/ overrides the theme's; set to an empty string for none"
   github_url:
     default: ""
     description: Link to your repository; shows a GitHub icon in the header and footer

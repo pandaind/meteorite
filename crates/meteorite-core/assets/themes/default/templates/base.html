@@ -16,6 +16,7 @@
   {% if page.meta.image %}<meta property="og:image" content="{{ url(path=page.meta.image) }}">{% elif config.params.og_image %}<meta property="og:image" content="{{ url(path=config.params.og_image) }}">{% endif %}
   <meta name="twitter:card" content="{% if page.meta.image or config.params.og_image %}summary_large_image{% else %}summary{% endif %}">
   <meta name="theme-color" content="#06070f">
+  {% if config.params.favicon %}<link rel="icon" href="{{ url(path=config.params.favicon) }}"{% if config.params.favicon is ending_with(".svg") %} type="image/svg+xml"{% endif %}>{% endif %}
   {% set skin_names = theme.skins | map(attribute="name") %}
   <script>try{var d=document.documentElement,m=localStorage.getItem("meteorite-theme"),k=localStorage.getItem("meteorite-skin"),ok={{ skin_names | json_encode | safe }};if(m==="light"||m==="dark")d.setAttribute("data-theme",m);if(k&&ok.indexOf(k)>-1)d.setAttribute("data-skin",k)}catch(e){}</script>
   <style>:root{--accent-light:{{ config.params.accent }};--accent-dark:{{ config.params.accent_dark }}}</style>

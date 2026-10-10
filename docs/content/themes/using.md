@@ -50,6 +50,12 @@ Symlinks and `.git` are stripped. Themes are templates and static files only; th
 code. Raw HTML and `<script>` tags in a theme's templates do end up in your site, so read a
 theme before you trust it with a production site.
 
+## Site icon
+
+Both bundled themes ship a `favicon.svg`. To use your own, put a file of the same name in your
+site's `static/` directory (it overrides the theme's), or point the `favicon` parameter at another
+file such as `icon.png`. Set `favicon: ""` for no icon link at all.
+
 ## Upgrading bundled themes
 
 A site keeps its own copy of a theme in `themes/<name>/`, made when you installed it. Upgrading
@@ -150,7 +156,7 @@ Available icons: `bolt`, `folder`, `palette`, `search`, `code`, `shield`, `rocke
 `book`, `layers`, `check`, `arrow`, `download`, `play`, `copy`, `heart`, `star`.
 
 Header options live under `params:` in `config.yml`: `github_url`, `header_cta_text`,
-`header_cta_url`, `logo`, `og_image`, `footer_text`, plus the colour options above. The two
+`header_cta_url`, `logo`, `og_image`, `favicon`, `footer_text`, plus the colour options above. The two
 themes share this front-matter schema and these parameters (`accent` is the light-mode colour and
 `accent_dark` the dark-mode one in both), so switching `theme:` keeps your home page intact.
 `terminal` adds `prompt` (the character before the title).

@@ -391,6 +391,62 @@ fn bundled_themes_render_a_search_dialog_when_enabled() {
 }
 
 #[test]
+fn bundled_themes_ship_a_favicon_that_the_site_can_override_or_drop() {
+    let dir = tmp("favicon");
+    let site = dir.join("s");
+    ok(&dir, &["new", "site", site.to_str().unwrap()]);
+    ok(&site, &["theme", "add", "terminal"]);
+
+    for theme in ["default", "terminal"] {
+        ok(&site, &["build", "--theme", theme]);
+        let home = read(&site, "index.html");
+        assert!(
+            home.contains("rel=\"icon\"")
+                && home.contains("favicon.svg")
+                && home.contains("image/svg+xml"),
+            "{theme}: icon link missing"
+        );
+        let svg = read(&site, "favicon.svg");
+        assert!(
+            svg.starts_with("<svg") && svg.contains("viewBox"),
+            "{theme}: not an SVG"
+        );
+        // The link resolves, so `check` stays green.
+        assert!(
+            run(&site, &["check", "--theme", theme]).status.success(),
+            "{theme}"
+        );
+    }
+
+    // A favicon.svg in the site's own static/ wins over the theme's.
+    fs::write(site.join("static/favicon.svg"), "<svg id=\"mine\"/>").unwrap();
+    ok(&site, &["build", "--theme", "default"]);
+    assert_eq!(read(&site, "favicon.svg"), "<svg id=\"mine\"/>");
+
+    // A different file, in another format, via the parameter.
+    fs::write(site.join("static/icon.png"), b"\x89PNG").unwrap();
+    let cfg = fs::read_to_string(site.join("config.yml")).unwrap();
+    fs::write(
+        site.join("config.yml"),
+        cfg.replace("  author: Me\n", "  author: Me\n  favicon: icon.png\n"),
+    )
+    .unwrap();
+    ok(&site, &["build", "--theme", "default"]);
+    let home = read(&site, "index.html");
+    assert!(home.contains("icon.png") && !home.contains("image/svg+xml"));
+
+    // Empty string means "no icon link".
+    let cfg = fs::read_to_string(site.join("config.yml")).unwrap();
+    fs::write(
+        site.join("config.yml"),
+        cfg.replace("favicon: icon.png", "favicon: \"\""),
+    )
+    .unwrap();
+    ok(&site, &["build", "--theme", "default"]);
+    assert!(!read(&site, "index.html").contains("rel=\"icon\""));
+}
+
+#[test]
 fn drafts_and_future_flags() {
     let site = fixture_copy("flags");
     ok(&site, &["build", "--drafts", "--future"]);
