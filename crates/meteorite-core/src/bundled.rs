@@ -59,6 +59,10 @@ static DEFAULT: Bundled = Bundled {
             include_str!("../assets/themes/default/templates/page.html"),
         ),
         (
+            "templates/partials/sky.html",
+            include_str!("../assets/themes/default/templates/partials/sky.html"),
+        ),
+        (
             "templates/section.html",
             include_str!("../assets/themes/default/templates/section.html"),
         ),
@@ -93,6 +97,10 @@ static TERMINAL: Bundled = Bundled {
     name: "terminal",
     files: &[
         (
+            "static/app.js",
+            include_str!("../assets/themes/terminal/static/app.js"),
+        ),
+        (
             "static/terminal.css",
             include_str!("../assets/themes/terminal/static/terminal.css"),
         ),
@@ -109,12 +117,24 @@ static TERMINAL: Bundled = Bundled {
             include_str!("../assets/themes/terminal/templates/index.html"),
         ),
         (
+            "templates/macros.html",
+            include_str!("../assets/themes/terminal/templates/macros.html"),
+        ),
+        (
             "templates/page.html",
             include_str!("../assets/themes/terminal/templates/page.html"),
         ),
         (
+            "templates/partials/sky.html",
+            include_str!("../assets/themes/terminal/templates/partials/sky.html"),
+        ),
+        (
             "templates/section.html",
             include_str!("../assets/themes/terminal/templates/section.html"),
+        ),
+        (
+            "templates/shortcodes/button.html",
+            include_str!("../assets/themes/terminal/templates/shortcodes/button.html"),
         ),
         (
             "templates/shortcodes/note.html",

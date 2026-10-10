@@ -11,6 +11,13 @@ in a major release.
   install command, stats, feature grid, showcase, quote, latest posts, CTA), card-grid listings,
   article layout with a sticky table of contents, code copy buttons, and Open Graph tags.
   New theme parameters: `github_url`, `header_cta_text`, `header_cta_url`, `logo`, `og_image`
+- `terminal` theme (0.3.0) given the same treatment: front-matter home page, cards, article
+  layout with table of contents, copy buttons, Open Graph tags, and a terminal-window install
+  command with a blinking cursor. It reads the same front matter and parameters as `default`
+  (breaking for `terminal` users: `accent` is now the light-mode colour and `accent_dark` the
+  dark-mode one, matching `default`)
+- Hero background: 16 falling meteors with glowing heads and a twinkling star field, in both
+  themes; disabled for `prefers-reduced-motion`
 - Output files are written atomically (temp file + rename), so the dev server never serves a
   half-written file
 - `new site` starts from a home page that uses the marketing blocks

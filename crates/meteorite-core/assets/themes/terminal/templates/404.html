@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
-<h1># 404</h1>
-<p>no such file. <a href="{{ url(path='/') }}">cd ~</a></p>
+<section class="container not-found">
+  <p class="eyebrow">404</p>
+  <h1>That page doesn't exist</h1>
+  <p class="lead">It may have moved, or the link is wrong.</p>
+  <a class="btn btn-primary" href="{{ url(path='/') }}">Back to home</a>
+</section>
 {% endblock content %}

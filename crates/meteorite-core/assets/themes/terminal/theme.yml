@@ -1,6 +1,6 @@
 name: terminal
-version: 0.2.0
-description: Monospace and minimal, dark by default with a light mode
+version: 0.3.0
+description: Monospace terminal look with a meteor-shower hero, light and dark modes
 author: Meteorite
 meteorite_api: 1
 params:
@@ -14,8 +14,26 @@ params:
     default: "$"
     description: Prompt character shown before the site title
   accent:
+    default: "#1a7f37"
+    description: Accent colour in light mode (any CSS colour)
+  accent_dark:
     default: "#7ee787"
     description: Accent colour in dark mode
-  accent_light:
-    default: "#1a7f37"
-    description: Accent colour in light mode
+  github_url:
+    default: ""
+    description: Link to your repository; shows a GitHub icon in the header and footer
+  header_cta_text:
+    default: ""
+    description: Label of the filled button at the right of the header (for example install)
+  header_cta_url:
+    default: ""
+    description: Where the header button goes
+  logo:
+    default: ""
+    description: Path under static/ of a logo image shown instead of the prompt
+  og_image:
+    default: ""
+    description: Default social-sharing image (path under static/); pages can override with `image` in front matter
+  footer_text:
+    default: ""
+    description: Text shown in the footer

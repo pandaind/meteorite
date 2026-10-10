@@ -1,9 +1,31 @@
 {% extends "base.html" %}
+{% import "macros.html" as m %}
 {% block content %}
-<article>
-  <h1># {{ page.meta.title }}</h1>
-  <p class="dim">{% if page.date %}{{ page.date }} | {% endif %}{{ page.word_count }} words{% if page.meta.tags %} | {% for tag in page.meta.tags %}{% set tag_slug = tag | slugify %}<a href="{{ url(path='/tags/' ~ tag_slug ~ '/') }}">#{{ tag }}</a> {% endfor %}{% endif %}</p>
-  {{ page.content | safe }}
-  <p class="dim">{% if page.prev %}<a href="{{ url(path=page.prev.url) }}">&lt; {{ page.prev.title }}</a>{% endif %} {% if page.next %}<a href="{{ url(path=page.next.url) }}">{{ page.next.title }} &gt;</a>{% endif %}</p>
-</article>
+<div class="container page-layout{% if page.toc | length > 2 %} has-toc{% endif %}">
+  <article class="article">
+    <header class="article-head">
+      {% if section and section.title and section.path %}<a class="crumb" href="{{ url(path=section.url) }}">{{ section.title }}</a>{% endif %}
+      <h1>{{ page.meta.title }}</h1>
+      {% if page.meta.description %}<p class="lead">{{ page.meta.description }}</p>{% endif %}
+      <p class="meta">
+        {% if page.date %}<time datetime="{{ page.date }}">{{ page.date | date(format="%B %e, %Y") }}</time><span class="dot">·</span>{% endif %}
+        <span>{{ page.reading_time }} min read</span>
+        {% for tag in page.meta.tags %}{% set tag_slug = tag | slugify %}<a class="tag" href="{{ url(path='/tags/' ~ tag_slug ~ '/') }}">#{{ tag }}</a>{% endfor %}
+      </p>
+    </header>
+    <div class="prose">{{ page.content | safe }}</div>
+    {% if page.prev or page.next %}
+    <nav class="prev-next" aria-label="More">
+      {% if page.prev %}<a class="card" href="{{ url(path=page.prev.url) }}"><span>Previous</span><strong>{{ page.prev.title }}</strong></a>{% else %}<span></span>{% endif %}
+      {% if page.next %}<a class="card next" href="{{ url(path=page.next.url) }}"><span>Next</span><strong>{{ page.next.title }}</strong></a>{% endif %}
+    </nav>
+    {% endif %}
+  </article>
+  {% if page.toc | length > 2 %}
+  <aside class="toc" aria-label="On this page">
+    <p>On this page</p>
+    <ul>{% for h in page.toc %}{% if h.level > 1 %}<li class="l{{ h.level }}"><a href="#{{ h.id }}">{{ h.title }}</a></li>{% endif %}{% endfor %}</ul>
+  </aside>
+  {% endif %}
+</div>
 {% endblock content %}

@@ -1,5 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
-<h1># {{ taxonomy.name }}/{{ term.name }}</h1>
-<ul class="list">{% for p in pages %}<li><span class="dim">{% if p.date %}{{ p.date }}{% else %}----------{% endif %}</span> <a href="{{ url(path=p.url) }}">{{ p.meta.title }}</a></li>{% endfor %}</ul>
+<section class="page-head container"><p class="eyebrow">{{ taxonomy.name | title }}</p><h1>{{ term.name }}</h1></section>
+<section class="container section tight"><div class="grid posts">
+{% for p in pages %}
+  <a class="card post-card" href="{{ url(path=p.url) }}">
+    {% if p.date %}<time datetime="{{ p.date }}">{{ p.date | date(format="%b %e, %Y") }}</time>{% endif %}
+    <h3>{{ p.meta.title }}</h3>{% if p.meta.description %}<p>{{ p.meta.description }}</p>{% endif %}
+  </a>
+{% endfor %}
+</div></section>
 {% endblock content %}

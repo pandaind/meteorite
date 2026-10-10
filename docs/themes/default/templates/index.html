@@ -6,7 +6,8 @@
 {% if page.meta.hero %}
 {% set hero = page.meta.hero %}
 <section class="hero">
-  <div class="hero-bg" aria-hidden="true"><span class="streak s1"></span><span class="streak s2"></span><span class="streak s3"></span></div>
+  <div class="hero-bg" aria-hidden="true"></div>
+  {% include "partials/sky.html" %}
   <div class="container hero-inner">
     {% if hero.announcement %}<a class="pill" href="{{ url(path=hero.announcement.url) }}">{{ hero.announcement.text }} {{ m::icon(name="arrow", size=14) | safe }}</a>{% endif %}
     {% if hero.eyebrow %}<p class="eyebrow">{{ hero.eyebrow }}</p>{% endif %}

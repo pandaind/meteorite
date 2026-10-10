@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
-<h1># {{ taxonomy.name }}</h1>
-<ul class="list">{% for t in terms %}<li><a href="{{ url(path=t.url) }}">{{ t.name }}</a> <span class="dim">{{ t.count }}</span></li>{% endfor %}</ul>
+<section class="page-head container"><h1>{{ taxonomy.name | title }}</h1></section>
+<section class="container section tight"><ul class="chips">
+{% for t in terms %}<li><a class="chip" href="{{ url(path=t.url) }}">{{ t.name }} <span>{{ t.count }}</span></a></li>{% endfor %}
+</ul></section>
 {% endblock content %}

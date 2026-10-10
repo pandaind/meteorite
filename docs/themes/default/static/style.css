@@ -25,6 +25,7 @@
     --glow: rgba(79,70,229,.16); --code-bg: #f3f4fb; --note-bg: rgba(79,70,229,.07);
     --shadow: 0 1px 2px rgba(20,21,42,.06), 0 10px 32px rgba(20,21,42,.08);
     --sun: none; --moon: block;
+    --stars: 0; --meteor-head: var(--accent);
   }
 }
 :root[data-theme="light"] {
@@ -35,6 +36,7 @@
   --glow: rgba(79,70,229,.16); --code-bg: #f3f4fb; --note-bg: rgba(79,70,229,.07);
   --shadow: 0 1px 2px rgba(20,21,42,.06), 0 10px 32px rgba(20,21,42,.08);
   --sun: none; --moon: block;
+  --stars: 0; --meteor-head: var(--accent);
 }
 
 * { box-sizing: border-box; }
@@ -95,11 +97,40 @@ a:hover { color: var(--fg-strong); }
   -webkit-mask-image: linear-gradient(#000 55%, transparent);
           mask-image: linear-gradient(#000 55%, transparent);
 }
-.streak { position: absolute; width: 14rem; height: 2px; background: linear-gradient(90deg, transparent, var(--accent), transparent); transform: rotate(-35deg); opacity: 0; animation: streak 7s linear infinite; }
-.streak.s1 { top: 18%; left: 8%; animation-delay: .6s; }
-.streak.s2 { top: 8%; left: 58%; animation-delay: 3.2s; width: 10rem; }
-.streak.s3 { top: 34%; left: 78%; animation-delay: 5.1s; width: 12rem; }
-@keyframes streak { 0% { opacity: 0; translate: 0 0; } 8% { opacity: .9; } 30% { opacity: 0; translate: -9rem 6.5rem; } 100% { opacity: 0; translate: -9rem 6.5rem; } }
+/* Meteor shower: a star field plus 16 streaks. Each streak gets its own position, length,
+   speed and (negative) delay from CSS variables set in partials/sky.html. */
+.sky { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.stars, .stars::after { position: absolute; inset: 0; content: ""; opacity: var(--stars, .55);
+  background-repeat: no-repeat;
+  background-image:
+    radial-gradient(1.5px 1.5px at 8% 18%, var(--fg) 60%, transparent 62%),
+    radial-gradient(1px 1px at 17% 61%, var(--fg) 60%, transparent 62%),
+    radial-gradient(1.5px 1.5px at 29% 33%, var(--fg) 60%, transparent 62%),
+    radial-gradient(1px 1px at 38% 78%, var(--fg) 60%, transparent 62%),
+    radial-gradient(1.5px 1.5px at 47% 14%, var(--fg) 60%, transparent 62%),
+    radial-gradient(1px 1px at 58% 52%, var(--fg) 60%, transparent 62%),
+    radial-gradient(1.5px 1.5px at 66% 27%, var(--fg) 60%, transparent 62%),
+    radial-gradient(1px 1px at 74% 70%, var(--fg) 60%, transparent 62%),
+    radial-gradient(1.5px 1.5px at 83% 9%, var(--fg) 60%, transparent 62%),
+    radial-gradient(1px 1px at 91% 44%, var(--fg) 60%, transparent 62%),
+    radial-gradient(1px 1px at 4% 82%, var(--fg) 60%, transparent 62%),
+    radial-gradient(1.5px 1.5px at 96% 86%, var(--fg) 60%, transparent 62%);
+  animation: twinkle 4.5s ease-in-out infinite alternate; }
+.stars::after { transform: translate(3.2%, 5%) scale(.9); opacity: .7; animation-duration: 6.5s; animation-delay: -2s; }
+@keyframes twinkle { from { opacity: calc(var(--stars, .55) * .35); } to { opacity: var(--stars, .55); } }
+.meteor { position: absolute; left: var(--x); top: var(--y); width: var(--len); height: 2px; border-radius: 2px;
+  background: linear-gradient(90deg, var(--meteor-head, #fff), var(--accent) 28%, transparent);
+  rotate: -35deg; transform-origin: left center; opacity: 0;
+  animation: meteor var(--dur) cubic-bezier(.3, .1, .6, 1) infinite; animation-delay: calc(var(--delay) * -1); }
+.meteor::before { content: ""; position: absolute; left: -1px; top: 50%; width: 5px; height: 5px; margin-top: -2.5px; border-radius: 50%;
+  background: var(--meteor-head, #fff); box-shadow: 0 0 10px 2px var(--accent), 0 0 24px 6px var(--glow); }
+@keyframes meteor {
+  0%   { opacity: 0; translate: 0 0; }
+  4%   { opacity: 1; }
+  38%  { opacity: .9; }
+  52%  { opacity: 0; translate: calc(var(--dist) * -.82) calc(var(--dist) * .57); }
+  100% { opacity: 0; translate: calc(var(--dist) * -.82) calc(var(--dist) * .57); }
+}
 .hero-inner { display: flex; flex-direction: column; align-items: center; text-align: center; padding-block: clamp(3.5rem, 9vw, 7rem) clamp(3rem, 7vw, 5.5rem); gap: 1.4rem; }
 .pill { display: inline-flex; align-items: center; gap: .5rem; padding: .35rem .9rem; border: 1px solid var(--line-strong); border-radius: 999px; background: color-mix(in srgb, var(--bg-elev) 80%, transparent); color: var(--fg); text-decoration: none; font-size: .88rem; }
 .pill:hover { border-color: var(--accent); color: var(--fg-strong); }
@@ -256,6 +287,7 @@ a.tag:hover { color: var(--accent); }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .streak { display: none; }
+  .meteor, .stars, .stars::after { animation: none; }
+  .meteor { display: none; }
   * { transition: none !important; }
 }

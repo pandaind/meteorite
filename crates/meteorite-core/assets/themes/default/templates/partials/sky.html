@@ -1,0 +1,6 @@
+{#- Decorative hero sky: a faint star field and a rain of meteors. Positions, lengths and
+    timings are derived from the loop index, so the output is identical on every build. -#}
+<div class="sky" aria-hidden="true">
+  <span class="stars"></span>
+  {% for i in range(end=16) %}<span class="meteor" style="--x:{{ (i * 37 + 11) % 100 }}%;--y:{{ (i * 23 + 4) % 52 }}%;--len:{{ 6 + (i * 5) % 9 }}rem;--delay:{{ (i * 17) % 13 }}s;--dur:{{ 3 + (i * 7) % 5 }}s;--dist:{{ 22 + (i * 9) % 20 }}rem"></span>{% endfor %}
+</div>

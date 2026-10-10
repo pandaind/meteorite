@@ -1,1 +1,1 @@
-<blockquote class="note">{{ body | safe }}</blockquote>
+<aside class="note{% if kind %} note-{{ kind }}{% endif %}">{{ body | safe }}</aside>

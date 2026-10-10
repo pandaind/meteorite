@@ -1,11 +1,124 @@
 {% extends "base.html" %}
+{% import "macros.html" as m %}
 {% block content %}
-{{ page.content | safe }}
-{% set recent = get_pages(limit=5) %}
-{% if recent %}
-<h2>## recent</h2>
-<ul class="list">
-{% for p in recent %}<li><span class="dim">{% if p.date %}{{ p.date }}{% else %}----------{% endif %}</span> <a href="{{ url(path=p.url) }}">{{ p.meta.title }}</a></li>{% endfor %}
-</ul>
+{#- The home page is built from front matter in content/_index.md: hero, stats, features,
+    showcase, quote, latest and cta. Every block is optional. -#}
+{% if page.meta.hero %}
+{% set hero = page.meta.hero %}
+<section class="hero">
+  <div class="hero-bg" aria-hidden="true"></div>
+  {% include "partials/sky.html" %}
+  <div class="container hero-inner">
+    {% if hero.announcement %}<a class="pill" href="{{ url(path=hero.announcement.url) }}">{{ hero.announcement.text }} {{ m::icon(name="arrow", size=14) | safe }}</a>{% endif %}
+    {% if hero.eyebrow %}<p class="eyebrow">{{ hero.eyebrow }}</p>{% endif %}
+    <h1 class="hero-title">{{ hero.title | default(value=config.title) }}</h1>
+    {% if hero.subtitle %}<p class="hero-sub">{{ hero.subtitle }}</p>{% endif %}
+    {% if hero.actions %}
+    <div class="actions">
+      {% for a in hero.actions %}<a class="btn btn-{{ a.style | default(value='primary') }}" href="{{ url(path=a.url) }}">{% if a.icon %}{{ m::icon(name=a.icon, size=18) | safe }}{% endif %}{{ a.name }}</a>{% endfor %}
+    </div>
+    {% endif %}
+    {% if hero.command %}
+    <div class="command term" data-copy-root>
+      <div class="term-bar"><i></i><i></i><i></i><span>~ / {{ config.title | lower | slugify }}</span></div>
+      <div class="term-body">
+        <span class="prompt" aria-hidden="true">{{ config.params.prompt }}</span><code>{{ hero.command }}</code><span class="cursor" aria-hidden="true"></span>
+        <button type="button" class="copy-btn" data-copy="{{ hero.command }}" aria-label="Copy command">{{ m::icon(name="copy", size=16) | safe }}<span>Copy</span></button>
+      </div>
+    </div>
+    {% endif %}
+    {% if hero.image %}<figure class="hero-shot"><img src="{{ url(path=hero.image) }}" alt="{{ hero.image_alt | default(value='') }}" loading="eager"></figure>{% endif %}
+  </div>
+</section>
+{% else %}
+<section class="page-head container">
+  <h1>{{ page.meta.title }}</h1>
+  {% if page.meta.description %}<p class="lead">{{ page.meta.description }}</p>{% endif %}
+</section>
+{% endif %}
+
+{% if page.meta.stats %}
+<section class="stats container" aria-label="Highlights">
+  {% for s in page.meta.stats %}<div class="stat"><strong>{{ s.value }}</strong><span>{{ s.label }}</span></div>{% endfor %}
+</section>
+{% endif %}
+
+{% if page.content %}
+<section class="section container"><div class="prose">{{ page.content | safe }}</div></section>
+{% endif %}
+
+{% if page.meta.features %}
+<section class="section container" id="features">
+  {% if page.meta.features.title %}<header class="section-head"><h2>{{ page.meta.features.title }}</h2>{% if page.meta.features.subtitle %}<p>{{ page.meta.features.subtitle }}</p>{% endif %}</header>{% endif %}
+  <div class="grid features">
+    {% for f in page.meta.features.items %}
+    <article class="card feature">
+      {% if f.icon %}<span class="feature-icon">{{ m::icon(name=f.icon, size=22) | safe }}</span>{% endif %}
+      <h3>{{ f.title }}</h3>
+      <p>{{ f.text }}</p>
+      {% if f.url %}<a class="more" href="{{ url(path=f.url) }}">{{ f.link_text | default(value="Learn more") }} {{ m::icon(name="arrow", size=14) | safe }}</a>{% endif %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if page.meta.showcase %}
+{% set sc = page.meta.showcase %}
+<section class="section container">
+  <div class="showcase">
+    <div class="showcase-text">
+      {% if sc.eyebrow %}<p class="eyebrow">{{ sc.eyebrow }}</p>{% endif %}
+      <h2>{{ sc.title }}</h2>
+      <p>{{ sc.text }}</p>
+      {% if sc.points %}<ul class="checks">{% for p in sc.points %}<li>{{ m::icon(name="check", size=18) | safe }}<span>{{ p }}</span></li>{% endfor %}</ul>{% endif %}
+      {% if sc.url %}<a class="btn btn-secondary" href="{{ url(path=sc.url) }}">{{ sc.link_text | default(value="Learn more") }}</a>{% endif %}
+    </div>
+    <div class="showcase-visual">
+      {% if sc.image %}<img src="{{ url(path=sc.image) }}" alt="{{ sc.image_alt | default(value='') }}" loading="lazy">
+      {% elif sc.code %}<div class="window"><div class="window-bar"><i></i><i></i><i></i><span>{{ sc.code_title | default(value="") }}</span></div><pre><code>{{ sc.code }}</code></pre></div>{% endif %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% if page.meta.quote %}
+{% set q = page.meta.quote %}
+<section class="section container">
+  <figure class="quote card">
+    <blockquote>{{ q.text }}</blockquote>
+    {% if q.name %}<figcaption><strong>{{ q.name }}</strong>{% if q.role %}<span>{{ q.role }}</span>{% endif %}</figcaption>{% endif %}
+  </figure>
+</section>
+{% endif %}
+
+{% if page.meta.latest %}
+{% set lt = page.meta.latest %}
+{% set recent = get_pages(section=lt.section | default(value=""), limit=lt.limit | default(value=3)) %}
+{% if recent | length > 0 %}
+<section class="section container">
+  <header class="section-head"><h2>{{ lt.title | default(value="Latest") }}</h2></header>
+  <div class="grid posts">
+    {% for p in recent %}
+    <a class="card post-card" href="{{ url(path=p.url) }}">
+      {% if p.date %}<time datetime="{{ p.date }}">{{ p.date | date(format="%b %e, %Y") }}</time>{% endif %}
+      <h3>{{ p.meta.title }}</h3>
+      {% if p.meta.description %}<p>{{ p.meta.description }}</p>{% endif %}
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endif %}
+
+{% if page.meta.cta %}
+{% set cta = page.meta.cta %}
+<section class="section container">
+  <div class="cta">
+    <h2>{{ cta.title }}</h2>
+    {% if cta.text %}<p>{{ cta.text }}</p>{% endif %}
+    {% if cta.actions %}<div class="actions">{% for a in cta.actions %}<a class="btn btn-{{ a.style | default(value='primary') }}" href="{{ url(path=a.url) }}">{{ a.name }}</a>{% endfor %}</div>{% endif %}
+  </div>
+</section>
 {% endif %}
 {% endblock content %}

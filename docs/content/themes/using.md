@@ -7,7 +7,7 @@ A theme is a directory under `themes/`. Meteorite bundles two, available offline
 | Theme | Look |
 |---|---|
 | `default` | Clean and readable. Light and dark modes. |
-| `terminal` | Monospace and minimal. Dark by default, with a light mode. |
+| `terminal` | Monospace terminal look: prompt and `[nav]` links, a terminal window for the install command, blinking cursor. Dark by default, with a light mode. |
 
 ```sh
 meteorite theme list
@@ -36,7 +36,7 @@ params:
   theme_toggle: true    # false hides the button
 ```
 
-`default` starts in `auto`; `terminal` starts in `dark`. A visitor's saved choice always wins.
+Both themes start in `dark`. A visitor's saved choice always wins.
 
 ## Installing third-party themes
 
@@ -58,7 +58,7 @@ the same name. To change just the footer of `base.html`, copy that one file into
 
 ## The home page
 
-The default theme builds the home page from front matter in `content/_index.md`. Every block is
+Both bundled themes build the home page from front matter in `content/_index.md`. Every block is
 optional: `hero`, `stats`, `features`, `showcase`, `quote`, `latest` and `cta`. The page body
 (Markdown) is shown between the hero and the features.
 
@@ -93,4 +93,10 @@ Available icons: `bolt`, `folder`, `palette`, `search`, `code`, `shield`, `rocke
 `book`, `layers`, `check`, `arrow`, `download`, `play`, `copy`, `heart`, `star`.
 
 Header options live under `params:` in `config.yml`: `github_url`, `header_cta_text`,
-`header_cta_url`, `logo`, `og_image`, `footer_text`, plus the colour options above.
+`header_cta_url`, `logo`, `og_image`, `footer_text`, plus the colour options above. The two
+themes share this front-matter schema and these parameters (`accent` is the light-mode colour and
+`accent_dark` the dark-mode one in both), so switching `theme:` keeps your home page intact.
+`terminal` adds `prompt` (the character before the title).
+
+The hero has a falling-meteor background. It is decorative, hidden from assistive technology, and
+turned off for visitors who prefer reduced motion.
