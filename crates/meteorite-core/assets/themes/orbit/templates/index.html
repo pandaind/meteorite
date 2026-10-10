@@ -6,7 +6,9 @@
 {% set cp = config.params %}
 {% set display_name = page.meta.profile.name | default(value=config.title) %}
 <section class="hero">
-  <div class="container hero-inner{% if cp.avatar %} has-avatar{% endif %}">
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+  <div class="starfield" aria-hidden="true">{% for i in range(end=28) %}<span style="--x:{{ (i * 37 + 11) % 100 }}%;--y:{{ (i * 53 + 7) % 100 }}%;--s:{{ 1 + (i * 3) % 3 }}px;--d:{{ (i * 7) % 9 }}s"></span>{% endfor %}</div>
+  <div class="container hero-inner">
     <div class="hero-text">
       {% if page.meta.profile.status %}
       {% set st = page.meta.profile.status %}
@@ -15,7 +17,8 @@
         {% if st.url %}<a href="{{ url(path=st.url) }}">{{ st.text }}</a>{% else %}{{ st.text }}{% endif %}
       </p>
       {% endif %}
-      <h1 class="hero-title">{% if page.meta.profile.greeting %}<span class="greeting">{{ page.meta.profile.greeting }}</span> {% endif %}{{ display_name }}</h1>
+      {% if page.meta.profile.greeting %}<p class="greeting">{{ page.meta.profile.greeting }}</p>{% endif %}
+      <h1 class="hero-title"><span class="name">{{ display_name }}</span></h1>
       {% if page.meta.profile.role %}<p class="hero-role">{{ page.meta.profile.role }}</p>{% endif %}
       {% if page.meta.profile.headline %}<p class="hero-headline">{{ page.meta.profile.headline }}</p>{% endif %}
       {% if page.content %}<div class="prose hero-bio">{{ page.content | safe }}</div>{% endif %}
@@ -30,12 +33,15 @@
       </p>
       {% if data.socials and not page.meta.profile.hide_socials %}{{ m::socials(items=data.socials) }}{% endif %}
     </div>
-    {% if cp.avatar %}<div class="hero-avatar"><img src="{{ url(path=cp.avatar) }}" alt="{{ display_name }}" width="320" height="320" loading="eager"></div>{% endif %}
+    <div class="orbit-art" aria-hidden="true">
+      <div class="rings"><span class="ring r1"></span><span class="ring r2"></span><span class="ring r3"></span></div>
+      <div class="orbit-core">{% if cp.avatar %}<img src="{{ url(path=cp.avatar) }}" alt="" width="320" height="320" loading="eager">{% else %}<span>{{ display_name | truncate(length=1, end="") | upper }}</span>{% endif %}</div>
+    </div>
   </div>
 </section>
 
 {% if page.meta.stats %}
-<section class="container stats" aria-label="Highlights">
+<section class="container stats reveal" aria-label="Highlights">
   {% for s in page.meta.stats %}<div class="stat"><strong>{{ s.value }}</strong><span>{{ s.label }}</span></div>{% endfor %}
 </section>
 {% endif %}
@@ -48,7 +54,7 @@
 {% set lim = page.meta.projects.limit | default(value=3) %}
 {% set items = get_pages(section=sec, limit=lim) %}
 {% if items | length > 0 %}
-<section class="section container" id="projects">
+<section class="section container reveal" id="projects">
   <header class="section-head"><h2>{{ page.meta.projects.title | default(value="Selected work") }}</h2><a class="more" href="{{ url(path='/' ~ sec ~ '/') }}">{{ page.meta.projects.link_text | default(value="All projects") }} {{ m::icon(name="arrow", size=14) | safe }}</a></header>
   <div class="grid projects">{% for p in items %}{{ m::project_card(p=p) }}{% endfor %}</div>
 </section>
@@ -59,7 +65,7 @@
 {% set lim = page.meta.posts.limit | default(value=4) %}
 {% set items = get_pages(section=sec, limit=lim) %}
 {% if items | length > 0 %}
-<section class="section container narrow" id="writing">
+<section class="section container narrow reveal" id="writing">
   <header class="section-head"><h2>{{ page.meta.posts.title | default(value="Writing") }}</h2><a class="more" href="{{ url(path='/' ~ sec ~ '/') }}">{{ page.meta.posts.link_text | default(value="All posts") }} {{ m::icon(name="arrow", size=14) | safe }}</a></header>
   <div class="post-list">{% for p in items %}{{ m::post_row(p=p, reading_time=cp.reading_time) }}{% endfor %}</div>
 </section>
@@ -70,7 +76,7 @@
 {% set lim = page.meta.notes.limit | default(value=3) %}
 {% set items = get_pages(section=sec, limit=lim) %}
 {% if items | length > 0 %}
-<section class="section container narrow" id="notes">
+<section class="section container narrow reveal" id="notes">
   <header class="section-head"><h2>{{ page.meta.notes.title | default(value="Notes") }}</h2><a class="more" href="{{ url(path='/' ~ sec ~ '/') }}">{{ page.meta.notes.link_text | default(value="All notes") }} {{ m::icon(name="arrow", size=14) | safe }}</a></header>
   <div class="note-stream">{% for p in items %}{{ m::note(p=p) }}{% endfor %}</div>
 </section>
@@ -78,10 +84,15 @@
 
 {% elif block == "skills" %}
 {% if page.meta.skills.items or data.resume.skills %}
-<section class="section container narrow" id="skills">
+<section class="section container narrow reveal" id="skills">
   <header class="section-head"><h2>{{ page.meta.skills.title | default(value="Skills") }}</h2></header>
   {% if page.meta.skills.items %}
-  <ul class="chips" role="list">{% for s in page.meta.skills.items %}<li class="chip">{{ s }}</li>{% endfor %}</ul>
+  <div class="marquee" role="list" aria-label="Skills">
+    <div class="marquee-track">
+      {% for s in page.meta.skills.items %}<span class="chip" role="listitem">{{ s }}</span>{% endfor %}
+      {% for s in page.meta.skills.items %}<span class="chip" aria-hidden="true">{{ s }}</span>{% endfor %}
+    </div>
+  </div>
   {% else %}
   <div class="skill-groups">
     {% for g in data.resume.skills %}<div class="skill-group"><h3>{{ g.group }}</h3><ul class="chips" role="list">{% for s in g.items %}<li class="chip">{{ s }}</li>{% endfor %}</ul></div>{% endfor %}
@@ -92,7 +103,7 @@
 
 {% elif block == "experience" %}
 {% if data.resume.work %}
-<section class="section container narrow" id="experience">
+<section class="section container narrow reveal" id="experience">
   <header class="section-head"><h2>Experience</h2><a class="more" href="{{ url(path='/resume/') }}">Full resume {{ m::icon(name="arrow", size=14) | safe }}</a></header>
   <ol class="timeline">
     {% for w in data.resume.work | slice(end=3) %}
@@ -104,7 +115,7 @@
 
 {% elif block == "contact" %}
 {% if page.meta.contact.title %}
-<section class="section container narrow" id="contact">
+<section class="section container narrow reveal" id="contact">
   <div class="contact card">
     <h2>{{ page.meta.contact.title }}</h2>
     {% if page.meta.contact.text %}<p>{{ page.meta.contact.text }}</p>{% endif %}

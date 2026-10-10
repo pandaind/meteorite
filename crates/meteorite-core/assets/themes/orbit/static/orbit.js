@@ -250,4 +250,26 @@
     b.hidden = false;
     b.addEventListener("click", function () { window.print(); });
   });
+  // --- cursor spotlight on cards -------------------------------------------------
+  var spots = document.querySelectorAll(".card, .note-item, .stat, .link-btn");
+  spots.forEach(function (el) {
+    el.classList.add("spot");
+    el.addEventListener("pointermove", function (e) {
+      var r = el.getBoundingClientRect();
+      el.style.setProperty("--mx", (e.clientX - r.left) + "px");
+      el.style.setProperty("--my", (e.clientY - r.top) + "px");
+    });
+  });
+  // --- reveal on scroll ----------------------------------------------------------
+  var reveals = document.querySelectorAll(".reveal");
+  if ("IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); }
+      });
+    }, { rootMargin: "0px 0px -8% 0px", threshold: 0.05 });
+    reveals.forEach(function (el) { io.observe(el); });
+  } else {
+    reveals.forEach(function (el) { el.classList.add("in"); });
+  }
 })();

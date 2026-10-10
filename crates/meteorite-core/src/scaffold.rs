@@ -217,6 +217,9 @@ sections: [projects, posts, notes, skills, contact]
 projects: { title: Selected work, limit: 3 }
 posts: { title: Writing, limit: 3 }
 notes: { title: Notes, limit: 3 }
+skills:
+  title: What I work with
+  items: [Rust, TypeScript, Python, PostgreSQL, Accessibility, Performance, Technical writing, Design systems]
 contact:
   title: Let's work together
   text: I take on a few projects each year. Tell me what you are building.

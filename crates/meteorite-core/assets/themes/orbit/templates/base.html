@@ -18,7 +18,7 @@
   <meta name="twitter:card" content="{% if og %}summary_large_image{% else %}summary{% endif %}">
   {% if p.favicon %}<link rel="icon" href="{{ url(path=p.favicon) }}"{% if p.favicon is ending_with(".svg") %} type="image/svg+xml"{% endif %}>{% endif %}
   {% set skin_names = theme.skins | map(attribute="name") %}
-  <script>try{var d=document.documentElement,m=localStorage.getItem("meteorite-theme"),k=localStorage.getItem("meteorite-skin"),ok={{ skin_names | json_encode | safe }};if(m==="light"||m==="dark")d.setAttribute("data-theme",m);if(k&&ok.indexOf(k)>-1)d.setAttribute("data-skin",k)}catch(e){}</script>
+  <script>try{var d=document.documentElement;d.classList.add("js");var m=localStorage.getItem("meteorite-theme"),k=localStorage.getItem("meteorite-skin"),ok={{ skin_names | json_encode | safe }};if(m==="light"||m==="dark")d.setAttribute("data-theme",m);if(k&&ok.indexOf(k)>-1)d.setAttribute("data-skin",k)}catch(e){}</script>
   {% if p.accent or p.accent_dark %}<style>:root{{ "{" }}{% if p.accent %}--accent-override-l:{{ p.accent }};{% endif %}{% if p.accent_dark %}--accent-override-d:{{ p.accent_dark }};{% endif %}{{ "}" }}</style>{% endif %}
   <link rel="stylesheet" href="{{ url(path='orbit.css') }}">
   <link rel="stylesheet" href="{{ url(path='highlight.css') }}">
@@ -66,6 +66,12 @@
     {% block content %}{% endblock content %}
   </main>
   <footer class="site-footer">
+    {% if p.email %}
+    <div class="container footer-cta">
+      <p class="eyebrow">Get in touch</p>
+      <a class="footer-mail" href="mailto:{{ p.email }}">{{ p.email }} {{ m::icon(name="arrow", size=28) | safe }}</a>
+    </div>
+    {% endif %}
     <div class="container footer-inner">
       <p>{% if p.footer_text %}{{ p.footer_text }}{% else %}{{ person }}{% endif %}</p>
       {% if data.socials %}{{ m::socials(items=data.socials) }}{% endif %}
