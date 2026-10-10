@@ -6,6 +6,8 @@ in a major release.
 
 ## [Unreleased]
 
+## [0.3.1]
+
 - Fixed: sites built with the bundled themes had no favicon (no icon link, `/favicon.ico` 404).
   Both themes (0.5.1) now ship a `favicon.svg`; override it with a `static/favicon.svg` or the
   `favicon` theme parameter, or set it to `""` to omit the link. Run `meteorite theme update`
