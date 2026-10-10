@@ -1,7 +1,7 @@
 # Meteorite
 
-A static site generator in Rust, in the spirit of Hugo: **Markdown** content, **YAML**
-configuration, **drop-in themes**, and no database. One binary, one folder of files.
+A fast static site generator in Rust: **Markdown** content, **YAML** configuration,
+**drop-in themes**, and no database. One binary, one folder of files.
 
 ```sh
 cargo install meteorite

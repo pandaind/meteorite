@@ -7,7 +7,7 @@ repository.workspace = true
 homepage.workspace = true
 readme = "../../README.md"
 rust-version.workspace = true
-description = "A Hugo-style static site generator: Markdown content, YAML config, pluggable themes"
+description = "A fast static site generator: Markdown content, YAML config, pluggable themes"
 keywords = ["static-site", "markdown", "cms", "ssg"]
 categories = ["command-line-utilities", "web-programming"]
 
