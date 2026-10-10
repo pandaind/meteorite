@@ -6,26 +6,37 @@ in a major release.
 
 ## [Unreleased]
 
-- `meteorite theme update [name]` refreshes installed bundled themes to the version in the
-  running release, keeping the old copy in `themes/.backup/`. `theme list` marks outdated
-  themes and `build` / `serve` warn when the active theme is older than the bundled one
-  (an existing site keeps its own copy of a theme, so it did not pick up new features)
+## [0.2.0]
 
-- Theme switching. `--theme <name>` on `build`, `serve` and `check` overrides the theme in
+**Added**
+
+- Search: both bundled themes add a search dialog (press `/` or Ctrl+K, or use the header
+  button) when `search.enabled: true`. Ranked results with highlighted matches; the index is
+  fetched on first use. `new site` enables it
+- Theme switching: `--theme <name>` on `build`, `serve` and `check` overrides the theme in
   `config.yml`. While serving, a dev-only picker re-renders the same URL under any installed
   theme and rebuilds every theme you have looked at on change
 - Skins: a theme can declare named palettes in `theme.yml`; visitors choose one from a header
   menu and the choice is remembered. `default` ships `meteor`, `paper` and `aurora`; `terminal`
   ships `green`, `amber` and `mono`. New params `skin` and `skin_switcher`; templates get a
-  `theme` object (`name`, `version`, `skins`). An unknown skin name is a warning
+  `theme` object (`name`, `version`, `skins`)
+- `meteorite theme update [name]` refreshes installed bundled themes to the version in the
+  running release, keeping the old copy in `themes/.backup/`; `theme list` marks outdated themes
 
-- Search: both bundled themes add a search dialog (press `/` or Ctrl+K, or use the header
-  button) when `search.enabled: true`. Ranked results with highlighted matches; the index is
-  fetched on first use. `new site` enables it
+**Improved**
+
 - Configuration typos are reported: an unknown key in `config.yml` produces a warning with a
   "did you mean" suggestion instead of being silently ignored
 - Template errors point at the problem: syntax errors show the source line with a marker, and
   render errors (for example an undefined variable) say which template line is likely at fault
+- `build` and `serve` warn when the active bundled theme is older than the one in the release
+  (an existing site keeps its own copy of a theme), and when `params.skin` names no skin
+
+### Upgrading from 0.1.x
+
+A site keeps its own copy of each theme, so existing sites do not pick up the new theme
+features by themselves. Run `meteorite theme update` once; your old copy is kept in
+`themes/.backup/`. `build` and `serve` warn when the active theme is out of date.
 
 ## [0.1.1]
 

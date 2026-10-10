@@ -20,7 +20,7 @@ name = "meteorite"
 path = "src/main.rs"
 
 [dependencies]
-meteorite-core = { path = "../meteorite-core", version = "0.1.1" }
+meteorite-core = { path = "../meteorite-core", version = "0.2.0" }
 clap.workspace = true
 miette.workspace = true
 axum.workspace = true
