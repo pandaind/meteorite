@@ -6,6 +6,8 @@ in a major release.
 
 ## [Unreleased]
 
+## [0.3.0]
+
 - Optional PopTalk chat assistant (`chat:` in `config.yml`, off by default):
   - `chat_widget()` renders a launcher; the widget loads only when clicked, is self-hosted with
     a subresource integrity hash, and follows the site's light/dark mode and skin accent
@@ -19,6 +21,13 @@ in a major release.
   `knowledge.json` in the site output, so poptalk-rag can pull it from the live site
   (`KNOWLEDGE_SITE_SOURCES`) instead of needing files copied to its server
 - `build --no-export`; the dev theme picker moved to the bottom-left of the page
+
+### Upgrading from 0.2.x
+
+Chat is opt-in and off by default, so nothing changes unless you add a `chat:` block. The bundled
+themes gained the `chat_widget()` hook (themes 0.5.0), so run `meteorite theme update` once to
+get it; `build` and `serve` warn when the active theme is out of date, and when chat is enabled
+but the theme never calls `chat_widget()`.
 
 ## [0.2.0]
 
