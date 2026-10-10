@@ -13,7 +13,7 @@ use serde::Serialize;
 use tera::{Context, Tera, Value};
 use walkdir::WalkDir;
 
-use crate::config::Config;
+use crate::config::{Config, HighlightStyle};
 use crate::content::{self, FrontMatter};
 use crate::error::{io_err, tera_err, Error, Result};
 use crate::markdown::{self, MarkdownOptions, TocEntry};
@@ -166,13 +166,33 @@ impl Builder {
         )?;
 
         // Markdown (parallel, cached).
+        if config.markdown.highlight {
+            for name in [
+                &config.markdown.highlight_theme,
+                &config.markdown.highlight_theme_dark,
+            ] {
+                if !markdown::is_highlight_theme(name) {
+                    let mut known = markdown::highlight_theme_names();
+                    known.sort();
+                    return Err(Error::Msg(format!(
+                        "config.yml: unknown highlight theme `{name}`. Available: {}",
+                        known.join(", ")
+                    )));
+                }
+            }
+        }
         let md_opts = MarkdownOptions {
             highlight: config.markdown.highlight,
             highlight_theme: config.markdown.highlight_theme.clone(),
+            classed: config.markdown.highlight_style == HighlightStyle::Classes,
         };
         let md_sig = format!(
-            "{}|{}|{}|{}",
-            md_opts.highlight, md_opts.highlight_theme, config.base_url, templates_hash
+            "{}|{}|{}|{}|{}",
+            md_opts.highlight,
+            md_opts.highlight_theme,
+            md_opts.classed,
+            config.base_url,
+            templates_hash
         );
         let results: Vec<Result<(u64, Cached)>> = {
             let cache = &self.cache;
@@ -251,6 +271,15 @@ impl Builder {
 
         // Collect outputs. Later inserts win: theme static < site static < assets < pages.
         let mut outputs: HashMap<PathBuf, Source> = HashMap::new();
+        if config.markdown.highlight {
+            // Always generated, so a theme can link it unconditionally; a file of the same
+            // name in the theme's or site's static/ overrides it.
+            let css = markdown::highlight_css(
+                &config.markdown.highlight_theme,
+                &config.markdown.highlight_theme_dark,
+            );
+            outputs.insert("highlight.css".into(), Source::Bytes(css.into_bytes()));
+        }
         collect_files(&theme_dir.join("static"), Path::new(""), &mut outputs)?;
         collect_files(&root.join("static"), Path::new(""), &mut outputs)?;
         collect_content_assets(&root.join("content"), &site, &mut outputs)?;

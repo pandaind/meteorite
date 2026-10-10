@@ -6,6 +6,14 @@ in a major release.
 
 ## [Unreleased]
 
+- Light and dark mode in both bundled themes: a header toggle, remembered per visitor,
+  applied before first paint; `color_scheme` and `theme_toggle` theme parameters
+- Code highlighting now emits CSS classes and a generated `highlight.css` with a light and a
+  dark palette (`markdown.highlight_style: classes`, the default). Themes must link
+  `highlight.css`. `highlight_style: inline` keeps the previous single-palette behaviour
+- `markdown.highlight_theme_dark`; unknown highlight theme names are now an error that lists
+  the available ones instead of silently falling back
+
 ## [0.1.0]
 
 First release.

@@ -74,10 +74,26 @@ content/blog/trip/map.png
 
 ## Code highlighting
 
-Fenced blocks with a known language are highlighted at build time with inline styles, so no
-JavaScript is needed. Choose the colour scheme with `markdown.highlight_theme`
-(for example `InspiredGitHub`, `base16-ocean.dark`, `Solarized (dark)`), or turn it off with
-`markdown.highlight: false`.
+Fenced blocks with a known language are highlighted at build time, so no JavaScript is needed.
+Meteorite writes CSS classes into the HTML and generates a `highlight.css` with two palettes:
+one for light mode and one for dark mode, so code follows the visitor's colour mode.
+
+```yaml
+markdown:
+  highlight: true
+  highlight_theme: InspiredGitHub        # light mode
+  highlight_theme_dark: base16-ocean.dark   # dark mode
+  highlight_style: classes               # or: inline
+```
+
+Bundled colour schemes include `InspiredGitHub`, `base16-ocean.dark`, `base16-ocean.light`,
+`base16-eighties.dark`, `base16-mocha.dark`, `Solarized (dark)` and `Solarized (light)`.
+An unknown name is a build error that lists the available ones.
+
+- `classes` (default): themes must link `highlight.css` (the bundled themes do).
+- `inline`: colours are written as `style` attributes using only `highlight_theme`. No stylesheet
+  is needed, but there is no dark palette.
+- `highlight: false` turns highlighting off.
 
 ## Shortcodes
 

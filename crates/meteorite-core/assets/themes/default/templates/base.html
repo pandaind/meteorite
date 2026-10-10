@@ -1,19 +1,22 @@
 <!doctype html>
-<html lang="{{ config.language }}">
+<html lang="{{ config.language }}"{% if config.params.color_scheme == "light" or config.params.color_scheme == "dark" %} data-theme="{{ config.params.color_scheme }}"{% endif %}>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% if page.meta.title and page.url != "/" %}{{ page.meta.title }} · {% endif %}{{ config.title }}</title>
   {% if page.meta.description %}<meta name="description" content="{{ page.meta.description }}">{% endif %}
+  <script>try{var m=localStorage.getItem("meteorite-theme");if(m==="light"||m==="dark")document.documentElement.setAttribute("data-theme",m)}catch(e){}</script>
+  <style>:root{--accent-light:{{ config.params.accent }};--accent-dark:{{ config.params.accent_dark }}}</style>
   <link rel="stylesheet" href="{{ url(path='style.css') }}">
+  <link rel="stylesheet" href="{{ url(path='highlight.css') }}">
   {% if config.feed.enabled %}<link rel="alternate" type="application/atom+xml" title="{{ config.title }}" href="{{ url(path='atom.xml') }}">{% endif %}
-  <style>:root { --accent: {{ config.params.accent }}; }</style>
 </head>
 <body>
   <header class="site-header">
     <a class="brand" href="{{ url(path='/') }}">{{ config.title }}</a>
     <nav>
       {% if config.menus.main %}{% for item in config.menus.main %}<a href="{{ url(path=item.url) }}"{% if page.url == item.url %} aria-current="page"{% endif %}>{{ item.name }}</a>{% endfor %}{% endif %}
+      {% if config.params.theme_toggle %}<button id="theme-toggle" class="theme-toggle" type="button" hidden aria-label="Switch colour mode" title="Switch colour mode"></button>{% endif %}
     </nav>
   </header>
   <main>
@@ -22,5 +25,6 @@
   <footer class="site-footer">
     {% if config.params.footer_text %}{{ config.params.footer_text }}{% else %}Built with Meteorite{% endif %}
   </footer>
+  {% if config.params.theme_toggle %}<script>(function(){var b=document.getElementById("theme-toggle");if(!b)return;var r=document.documentElement;function cur(){var t=r.getAttribute("data-theme");return t||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")}function paint(){var d=cur()==="dark";b.textContent=d?"\u2600":"\u263E";b.setAttribute("aria-pressed",String(d));b.title=d?"Switch to light mode":"Switch to dark mode"}b.hidden=false;paint();b.addEventListener("click",function(){var n=cur()==="dark"?"light":"dark";r.setAttribute("data-theme",n);try{localStorage.setItem("meteorite-theme",n)}catch(e){}paint()})})();</script>{% endif %}
 </body>
 </html>

@@ -17,6 +17,8 @@ theme: {theme}
 
 params:
   author: Me
+  # color_scheme: auto    # auto (follow the OS) | light | dark
+  # theme_toggle: true    # show the light/dark button
 
 menus:
   main:
@@ -29,6 +31,8 @@ paginate_by: 10
 
 markdown:
   highlight: true
+  highlight_theme: InspiredGitHub          # code colours in light mode
+  highlight_theme_dark: base16-ocean.dark  # code colours in dark mode
 
 build:
   drafts: false

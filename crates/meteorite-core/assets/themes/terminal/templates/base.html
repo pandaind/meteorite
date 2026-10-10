@@ -1,21 +1,26 @@
 <!doctype html>
-<html lang="{{ config.language }}">
+<html lang="{{ config.language }}"{% if config.params.color_scheme == "light" or config.params.color_scheme == "dark" %} data-theme="{{ config.params.color_scheme }}"{% endif %}>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% if page.meta.title and page.url != "/" %}{{ page.meta.title }} | {% endif %}{{ config.title }}</title>
+  <script>try{var m=localStorage.getItem("meteorite-theme");if(m==="light"||m==="dark")document.documentElement.setAttribute("data-theme",m)}catch(e){}</script>
+  <style>:root{--accent-dark:{{ config.params.accent }};--accent-light:{{ config.params.accent_light }}}</style>
   <link rel="stylesheet" href="{{ url(path='terminal.css') }}">
+  <link rel="stylesheet" href="{{ url(path='highlight.css') }}">
   {% if config.feed.enabled %}<link rel="alternate" type="application/atom+xml" href="{{ url(path='atom.xml') }}">{% endif %}
-  <style>:root { --accent: {{ config.params.accent }}; }</style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <a href="{{ url(path='/') }}" class="title"><span class="prompt">{{ config.params.prompt }}</span> {{ config.title }}</a>
-    <nav>{% if config.menus.main %}{% for item in config.menus.main %}<a href="{{ url(path=item.url) }}">[{{ item.name | lower }}]</a>{% endfor %}{% endif %}</nav>
+    <nav>{% if config.menus.main %}{% for item in config.menus.main %}<a href="{{ url(path=item.url) }}">[{{ item.name | lower }}]</a>{% endfor %}{% endif %}
+      {% if config.params.theme_toggle %}<button id="theme-toggle" class="theme-toggle" type="button" hidden aria-label="Switch colour mode"></button>{% endif %}
+    </nav>
   </header>
   {% block content %}{% endblock content %}
   <footer>-- end of file --</footer>
 </div>
+{% if config.params.theme_toggle %}<script>(function(){var b=document.getElementById("theme-toggle");if(!b)return;var r=document.documentElement;function cur(){var t=r.getAttribute("data-theme");return t||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark")}function paint(){var d=cur()==="dark";b.textContent=d?"[light]":"[dark]";b.setAttribute("aria-pressed",String(d));b.title=d?"Switch to light mode":"Switch to dark mode"}b.hidden=false;paint();b.addEventListener("click",function(){var n=cur()==="dark"?"light":"dark";r.setAttribute("data-theme",n);try{localStorage.setItem("meteorite-theme",n)}catch(e){}paint()})})();</script>{% endif %}
 </body>
 </html>

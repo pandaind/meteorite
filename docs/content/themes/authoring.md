@@ -19,6 +19,15 @@ themes/mytheme/
 └── static/               copied to the site root
 ```
 
+Link the generated code stylesheet from your `base.html`, next to your own:
+
+```html
+<link rel="stylesheet" href="{{ url(path='highlight.css') }}">
+```
+
+Meteorite always generates `highlight.css` when highlighting is on. Without the link, code
+blocks are plain monospace text.
+
 Templates use [Tera](https://keats.github.io/tera/docs/) (Jinja-like). Output is HTML-escaped
 by default; use `| safe` for `page.content`, `page.summary` and shortcode `body`.
 
@@ -98,6 +107,19 @@ without pagination has `total_pages == 1`.
 
 `templates/shortcodes/note.html` is invoked as `{{< note kind="warn" >}}...{{< /note >}}`.
 Arguments arrive as top-level variables and the Markdown body, already rendered, as `body`.
+
+## Light and dark mode
+
+Both bundled themes are good starting points. The pattern they use:
+
+1. Define colours as CSS variables on `:root` for light.
+2. Override them for dark under `@media (prefers-color-scheme: dark)`, guarded with
+   `:root:not([data-theme="light"])`, and again under `:root[data-theme="dark"]`.
+3. Set `data-theme` on `<html>` from JavaScript when the visitor presses a toggle, and store the
+   choice in `localStorage`. Read it from a tiny inline script in `<head>` so there is no flash.
+4. Let the site pin a starting mode with a `color_scheme` parameter (`auto`, `light`, `dark`).
+
+`highlight.css` follows the same `data-theme` convention, so code blocks switch with your page.
 
 ## Tips
 

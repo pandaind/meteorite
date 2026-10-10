@@ -1,12 +1,21 @@
 name: terminal
-version: 0.1.0
-description: Monospace, dark, minimal
+version: 0.2.0
+description: Monospace and minimal, dark by default with a light mode
 author: Meteorite
 meteorite_api: 1
 params:
+  color_scheme:
+    default: dark
+    description: "Initial mode: dark, light, or auto (follow the OS). Visitors can override with the toggle."
+  theme_toggle:
+    default: true
+    description: Show the light/dark toggle in the header
   prompt:
     default: "$"
     description: Prompt character shown before the site title
   accent:
     default: "#7ee787"
-    description: Accent colour
+    description: Accent colour in dark mode
+  accent_light:
+    default: "#1a7f37"
+    description: Accent colour in light mode

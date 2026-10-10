@@ -175,7 +175,16 @@ fn fixture_semantics() {
     let about = read(&site, "about/index.html");
     assert!(about.contains("href=\"#sub-heading-1\""), "{about}");
     assert!(about.contains("<h3 id=\"third-level\">"));
-    assert!(about.contains("style=\"")); // syntect inline styles
+    assert!(about.contains("<pre class=\"hl\">") && about.contains("class=\"hl-"));
+    assert!(
+        !about.contains("style=\""),
+        "classes mode must not emit inline styles"
+    );
+    let css = read(&site, "highlight.css");
+    assert!(
+        css.contains(":root[data-theme=\"dark\"] .hl-")
+            && css.contains("prefers-color-scheme: dark")
+    );
 
     // Shortcode (paired, with args and rendered Markdown body), summary and prev/next.
     let a = read(&site, "blog/a/index.html");
@@ -210,6 +219,64 @@ fn fixture_semantics() {
         "inline tags must not split words"
     );
     assert!(out.join("404.html").is_file());
+}
+
+#[test]
+fn highlight_inline_style_and_unknown_theme() {
+    let site = fixture_copy("hl");
+    let cfg = fs::read_to_string(site.join("config.yml")).unwrap();
+
+    fs::write(
+        site.join("config.yml"),
+        format!("{cfg}markdown:\n  highlight_style: inline\n"),
+    )
+    .unwrap();
+    ok(&site, &["build"]);
+    let about = read(&site, "about/index.html");
+    assert!(about.contains("style=\"") && !about.contains("class=\"hl-"));
+
+    fs::write(
+        site.join("config.yml"),
+        format!("{cfg}markdown:\n  highlight_theme_dark: not-a-theme\n"),
+    )
+    .unwrap();
+    let out = run(&site, &["build"]);
+    assert!(!out.status.success());
+    let err = flat(&String::from_utf8_lossy(&out.stderr));
+    assert!(
+        err.contains("unknown highlight theme `not-a-theme`") && err.contains("base16-ocean.dark"),
+        "{err}"
+    );
+}
+
+#[test]
+fn bundled_themes_ship_a_color_mode_toggle() {
+    let dir = tmp("toggle");
+    let site = dir.join("s");
+    ok(&dir, &["new", "site", site.to_str().unwrap()]);
+    let page = || read(&site, "index.html");
+    ok(&site, &["build"]);
+    let html = page();
+    assert!(html.contains("id=\"theme-toggle\"") && html.contains("meteorite-theme"));
+    assert!(html.contains("highlight.css"));
+    // color_scheme pins the starting mode; theme_toggle: false removes the button.
+    let cfg = fs::read_to_string(site.join("config.yml")).unwrap();
+    fs::write(
+        site.join("config.yml"),
+        cfg.replace(
+            "  author: Me\n",
+            "  author: Me\n  color_scheme: dark\n  theme_toggle: false\n",
+        ),
+    )
+    .unwrap();
+    ok(&site, &["build"]);
+    let html = page();
+    assert!(
+        html.contains("<html lang=\"en\" data-theme=\"dark\">"),
+        "{}",
+        &html[..200]
+    );
+    assert!(!html.contains("id=\"theme-toggle\""));
 }
 
 #[test]

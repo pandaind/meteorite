@@ -24,7 +24,9 @@ paginate_by: 10                 # default page size for section listings
 
 markdown:
   highlight: true
-  highlight_theme: InspiredGitHub
+  highlight_theme: InspiredGitHub          # code colours in light mode
+  highlight_theme_dark: base16-ocean.dark  # code colours in dark mode
+  highlight_style: classes                 # classes (generates highlight.css) | inline
 
 build:
   drafts: false

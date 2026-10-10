@@ -1,6 +1,7 @@
 <!doctype html>
 <title>{{ page.meta.title }} | {{ config.title }}</title>
 <link rel="stylesheet" href="{{ url(path='/test.css') }}">
+<link rel="stylesheet" href="{{ url(path='/highlight.css') }}">
 <nav>{% for m in config.menus.main %}<a href="{{ url(path=m.url) }}">{{ m.name }}</a> {% endfor %}</nav>
 <p class="tagline">{{ config.params.tagline }} ({{ config.params.color }})</p>
 {% block content %}{% endblock content %}

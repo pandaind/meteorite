@@ -40,7 +40,23 @@ pub struct MenuItem {
 #[serde(default)]
 pub struct MarkdownConfig {
     pub highlight: bool,
+    /// Colour scheme used for code in light mode (and for `inline` style).
     pub highlight_theme: String,
+    /// Colour scheme used for code in dark mode (`classes` style only).
+    pub highlight_theme_dark: String,
+    pub highlight_style: HighlightStyle,
+}
+
+/// How highlighted code is emitted.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum HighlightStyle {
+    /// CSS classes plus a generated `highlight.css` with light and dark palettes.
+    /// Themes must link `highlight.css`.
+    #[default]
+    Classes,
+    /// Inline `style` attributes using `highlight_theme` only; no stylesheet needed.
+    Inline,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -91,6 +107,8 @@ impl Default for MarkdownConfig {
         Self {
             highlight: true,
             highlight_theme: "InspiredGitHub".into(),
+            highlight_theme_dark: "base16-ocean.dark".into(),
+            highlight_style: HighlightStyle::default(),
         }
     }
 }
