@@ -4,6 +4,7 @@
 {#- `layout:` in front matter: `article`, `resume`, `links`, `note`, `project`. Pages inherit
     `note` / `project` from a section whose `layout` is `notes` / `projects`. -#}
 {% set cp = config.params %}
+{% set file_slug = page.url | trim_end_matches(pat="/") | split(pat="/") | last %}
 {% set own = page.meta.layout | default(value="") %}
 {% if own == "" and section and section.path %}
   {% set parent = get_section(path=section.path) %}
@@ -32,7 +33,7 @@
 
 {% elif layout == "project" %}
 <div class="container inner">
-  {{ m::crumbs(sec_name=section.title, sec_url=section.url, here=page.meta.title | lower) }}
+  {{ m::crumbs(sec_name=section.title, sec_url=section.url, here=file_slug) }}
   <header class="inner-head">
     <h1>{{ page.meta.title }}</h1>
     {% if page.meta.description %}<p class="lead">{{ page.meta.description }}</p>{% endif %}
@@ -64,7 +65,7 @@
 
 {% else %}
 <div class="container inner narrow">
-  {% if section and section.title and section.path %}{{ m::crumbs(sec_name=section.title, sec_url=section.url, here=page.meta.title | lower | slugify) }}{% else %}{{ m::crumbs(here=page.meta.title | lower | slugify) }}{% endif %}
+  {% if section and section.title and section.path %}{{ m::crumbs(sec_name=section.title, sec_url=section.url, here=file_slug) }}{% else %}{{ m::crumbs(here=file_slug) }}{% endif %}
   <article class="article">
     <header class="inner-head">
       <h1>{{ page.meta.title }}</h1>

@@ -6,6 +6,12 @@ in a major release.
 
 ## [Unreleased]
 
+- Fixed: `meteorite serve` wrote its preview into `public/`, so running a production `meteorite build`
+  in the same folder replaced the preview's pages with ones that point at the live site and the
+  preview came up unstyled. The preview now has its own folder in the system temp directory
+- devlog theme 0.1.2: breadcrumbs show the page's file name instead of a slug of its title, and the
+  repository icon stays aligned when a card title wraps
+
 ## [0.5.0]
 
 - New bundled theme `orbit` for personal sites: profile home page, projects, blog, micro-blog

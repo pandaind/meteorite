@@ -112,6 +112,19 @@ struct AppState {
     reload: broadcast::Sender<()>,
 }
 
+/// Where `serve` writes the preview: a folder in the system temp directory that is unique to
+/// the site root, so it never collides with `public/` or with another site's preview.
+fn preview_dir(root: &Path) -> PathBuf {
+    let abs = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
+    // FNV-1a: stable across runs and platforms, unlike `DefaultHasher`.
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    for b in abs.to_string_lossy().as_bytes() {
+        hash ^= u64::from(*b);
+        hash = hash.wrapping_mul(0x0100_0000_01b3);
+    }
+    std::env::temp_dir().join(format!("meteorite-serve-{hash:016x}"))
+}
+
 pub fn run(
     root: &Path,
     mut opts: BuildOptions,
@@ -121,6 +134,11 @@ pub fn run(
 ) -> Result<ExitCode, Error> {
     let origin = format!("http://{bind}:{port}");
     opts.base_url = Some(format!("{origin}/"));
+    // The preview has its own output folder, so a production `meteorite build` run in another
+    // terminal cannot overwrite it with pages that point at the live site.
+    if opts.out_dir.is_none() {
+        opts.out_dir = Some(preview_dir(root));
+    }
     // Previewing must not write into another project's knowledge folder.
     opts.skip_knowledge_export = true;
 
@@ -547,5 +565,14 @@ mod tests {
         let js = toolbar_script(&["default".into(), "terminal".into()], "terminal");
         assert!(js.contains("T=[\"default\",\"terminal\"]") && js.contains("A=\"terminal\""));
         assert!(js.contains("/__meteorite/theme?name="));
+    }
+
+    #[test]
+    fn preview_dir_is_outside_the_site_and_unique_per_root() {
+        let a = preview_dir(Path::new("/srv/site-a"));
+        let b = preview_dir(Path::new("/srv/site-b"));
+        assert_ne!(a, b);
+        assert_eq!(a, preview_dir(Path::new("/srv/site-a")));
+        assert!(!a.starts_with("/srv/site-a"));
     }
 }
