@@ -9,6 +9,8 @@ in a major release.
 - Fixed: `meteorite serve` wrote its preview into `public/`, so running a production `meteorite build`
   in the same folder replaced the preview's pages with ones that point at the live site and the
   preview came up unstyled. The preview now has its own folder in the system temp directory
+- New template function `identicon(seed=...)` returns a GitHub-style default avatar (a symmetric 5x5
+  pattern from the seed) as inline SVG. The devlog theme (0.1.6) uses it when no `avatar` is set
 - devlog theme 0.1.4: breadcrumbs show the page's file name instead of a slug of its title, and the
   repository icon stays aligned when a card title wraps
 

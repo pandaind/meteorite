@@ -72,6 +72,7 @@ Functions:
 | `get_pages(section="", limit=N, recursive=true)` | Pages (no body), newest first. |
 | `get_section(path="blog")` | A section object including its `pages`. |
 | `resize_image(path="a.jpg", width=400)` | URL of a resized copy (needs `--features images`). |
+| `identicon(seed="Ada Lovelace")` | Inline SVG default avatar, a symmetric 5x5 pattern derived from the seed. Add `\| safe`. The background has the class `identicon-bg`. |
 
 ### `page`
 

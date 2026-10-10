@@ -7,8 +7,8 @@
 {% set display_name = page.meta.profile.name | default(value=config.title) %}
 <div class="container home">
   <aside class="profile" aria-label="Profile">
-    {#- Like a default avatar on GitHub: the photo when `avatar` is set, otherwise your initial. -#}
-    <div class="avatar">{% if cp.avatar %}<img src="{{ url(path=cp.avatar) }}" alt="{{ display_name }}" width="296" height="296">{% else %}<span aria-hidden="true">{{ display_name | truncate(length=1, end="") | upper }}</span>{% endif %}</div>
+    {#- Like a default avatar on GitHub: the photo when `avatar` is set, otherwise a pattern generated from your name. -#}
+    <div class="avatar{% if not cp.avatar %} avatar-generated{% endif %}">{% if cp.avatar %}<img src="{{ url(path=cp.avatar) }}" alt="{{ display_name }}" width="296" height="296">{% else %}{{ identicon(seed=display_name) | safe }}{% endif %}</div>
     <h1 class="p-name">{{ display_name }}</h1>
     {% if cp.handle %}<p class="p-handle">{{ cp.handle }}</p>{% endif %}
     {% if page.meta.profile.role %}<p class="p-role">{{ page.meta.profile.role }}</p>{% endif %}

@@ -570,6 +570,14 @@ fn register_url_fn(tera: &mut Tera, base_url: &str) {
             .ok_or_else(|| tera::Error::msg("url(): `path` is required"))?;
         Ok(Value::String(join_url(&base, path)))
     });
+    // A default avatar for a name: `{{ identicon(seed=config.title) | safe }}`.
+    tera.register_function("identicon", |args: &HashMap<String, Value>| {
+        let seed = args
+            .get("seed")
+            .and_then(Value::as_str)
+            .ok_or_else(|| tera::Error::msg("identicon(): `seed` is required"))?;
+        Ok(Value::String(crate::identicon::svg(seed)))
+    });
 }
 
 struct FnData {
