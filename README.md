@@ -41,7 +41,6 @@ Start with `docs/content/guide/getting-started.md`, then the
 | `crates/meteorite-core/assets/themes` | Bundled themes |
 | `docs/` | Documentation site |
 | `scripts/gen-bench-site.sh` | Synthetic site generator for benchmarks |
-| `PLAN.md` | Roadmap and design decisions |
 
 ## Development
 

@@ -1,3 +1,8 @@
 target/
 public/
+
+# Local planning and agent files (kept on disk, not versioned)
+CLAUDE.md
+PLAN.md
+BOARD.md
 .relay/
