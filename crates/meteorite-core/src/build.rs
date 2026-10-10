@@ -39,6 +39,9 @@ pub struct BuildOptions {
     pub out_dir: Option<PathBuf>,
     /// Treat this as today's date (for tests).
     pub today: Option<NaiveDate>,
+    /// Do not write the poptalk-rag knowledge export even if `chat.knowledge.dir` is set.
+    /// `check` and `serve` set this so they never touch another project's files.
+    pub skip_knowledge_export: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -54,6 +57,8 @@ pub struct BuildReport {
     pub warnings: Vec<String>,
     pub output: PathBuf,
     pub elapsed: Duration,
+    /// Present when `chat.knowledge.dir` is configured and the export ran.
+    pub knowledge: Option<crate::knowledge::ExportReport>,
 }
 
 /// One-shot build of the site at `root`.
@@ -172,9 +177,25 @@ impl Builder {
         }
 
         // Templates and functions that don't depend on the site model.
-        let (mut tera, templates_hash) = load_templates(&root, &theme_dir)?;
+        let (mut tera, templates_hash, uses_chat) = load_templates(&root, &theme_dir)?;
+        if config.chat.enabled() && !uses_chat {
+            warnings.push(format!(
+                "chat is enabled but theme `{}` never calls chat_widget(), so no chat launcher will appear. \
+                 Add `{{{{ chat_widget() | safe }}}}` before </body> in your base template, or run \
+                 `meteorite theme update {}` if this is a bundled theme",
+                config.theme, config.theme
+            ));
+        }
         tera.set_escape_fn(crate::util::html_escape);
         register_url_fn(&mut tera, &config.base_url);
+        let chat_widget = (config.chat.enabled() && config.chat.widget == "bundled")
+            .then(crate::chat::bundled_widget);
+        crate::chat::register(
+            &mut tera,
+            &config.chat,
+            &config.base_url,
+            chat_widget.as_ref(),
+        );
         let generated: images::Generated = Arc::new(Mutex::new(Vec::new()));
         images::register(
             &mut tera,
@@ -309,6 +330,13 @@ impl Builder {
 
         // Collect outputs. Later inserts win: theme static < site static < assets < pages.
         let mut outputs: HashMap<PathBuf, Source> = HashMap::new();
+        if let Some(w) = &chat_widget {
+            outputs.insert(PathBuf::from(&w.path), Source::Bytes(w.bytes.clone()));
+            outputs.insert(
+                PathBuf::from(w.license_path),
+                Source::Bytes(w.license.clone().into_bytes()),
+            );
+        }
         if config.markdown.highlight {
             // Always generated, so a theme can link it unconditionally; a file of the same
             // name in the theme's or site's static/ overrides it.
@@ -401,6 +429,12 @@ impl Builder {
         self.last_outputs = now;
         self.last_out_dir = Some(out_dir.clone());
 
+        let knowledge = if opts.skip_knowledge_export {
+            None
+        } else {
+            crate::knowledge::export(&root, &config, &site, &tera)?
+        };
+
         Ok(BuildReport {
             pages: site.all.len(),
             sections: site.sections.len(),
@@ -413,6 +447,7 @@ impl Builder {
             warnings,
             output: out_dir,
             elapsed: start.elapsed(),
+            knowledge,
         })
     }
 }
@@ -472,9 +507,12 @@ fn prune_empty_dirs(mut dir: Option<&Path>, stop: &Path) {
 }
 
 /// Theme templates load first; the site's own `templates/` override them by name.
-fn load_templates(root: &Path, theme_dir: &Path) -> Result<(Tera, u64)> {
+/// Returns the engine, a hash of every template source, and whether any template calls
+/// `chat_widget()`.
+fn load_templates(root: &Path, theme_dir: &Path) -> Result<(Tera, u64, bool)> {
     let mut tera = Tera::default();
     let mut hasher_parts: Vec<String> = Vec::new();
+    let mut uses_chat = false;
     for base in [theme_dir.join("templates"), root.join("templates")] {
         if !base.is_dir() {
             continue;
@@ -493,6 +531,7 @@ fn load_templates(root: &Path, theme_dir: &Path) -> Result<(Tera, u64)> {
                     .to_string_lossy()
                     .replace('\\', "/");
                 if let Ok(text) = fs::read_to_string(entry.path()) {
+                    uses_chat |= text.contains("chat_widget(");
                     hasher_parts.push(format!("{name}\0{text}"));
                 }
                 files.push((entry.path().to_path_buf(), Some(name)));
@@ -501,7 +540,7 @@ fn load_templates(root: &Path, theme_dir: &Path) -> Result<(Tera, u64)> {
         tera.add_template_files(files).map_err(tera_err)?;
     }
     let refs: Vec<&str> = hasher_parts.iter().map(String::as_str).collect();
-    Ok((tera, hash_parts(&refs)))
+    Ok((tera, hash_parts(&refs), uses_chat))
 }
 
 fn register_url_fn(tera: &mut Tera, base_url: &str) {

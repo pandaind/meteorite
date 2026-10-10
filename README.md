@@ -17,6 +17,7 @@ meteorite serve            # http://127.0.0.1:1111, live reload
 - Pagination, taxonomies, menus, permalinks, data files, table of contents, heading anchors
 - Build-time syntax highlighting, shortcodes, optional image resizing
 - Atom + RSS feeds, sitemap, robots.txt, client-side search index
+- Optional [PopTalk](https://github.com/pandaind/poptalk) chat assistant, with your site exported as its knowledge base for [poptalk-rag](https://github.com/pandaind/poptalk-rag)
 - `meteorite check` finds broken internal links; clear errors with file, line and column
 - Incremental rebuilds while serving; about 1 s for 10,000 pages on a 20-thread machine
 

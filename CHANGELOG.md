@@ -6,6 +6,17 @@ in a major release.
 
 ## [Unreleased]
 
+- Optional PopTalk chat assistant (`chat:` in `config.yml`, off by default):
+  - `chat_widget()` renders a launcher; the widget loads only when clicked, is self-hosted with
+    a subresource integrity hash, and follows the site's light/dark mode and skin accent
+  - `chat.knowledge.dir` exports every published page as Markdown with front matter into a
+    poptalk-rag knowledge folder (shortcodes and home-page blocks become text; drafts excluded;
+    only Meteorite's own files are touched)
+  - `meteorite chat check` verifies the backend and CORS; `meteorite chat sync` triggers a
+    re-index with a key read from the environment
+  - credential-looking keys under `chat:` are refused
+- `build --no-export`; the dev theme picker moved to the bottom-left of the page
+
 ## [0.2.0]
 
 **Added**

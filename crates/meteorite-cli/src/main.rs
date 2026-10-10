@@ -1,3 +1,4 @@
+mod chat;
 mod serve;
 
 use std::path::{Path, PathBuf};
@@ -42,6 +43,9 @@ enum Command {
         /// Minify HTML and CSS (overrides config)
         #[arg(long)]
         minify: bool,
+        /// Skip writing the poptalk-rag knowledge export even if chat.knowledge.dir is set
+        #[arg(long)]
+        no_export: bool,
     },
     /// Build, serve and live-reload while you edit
     Serve {
@@ -66,6 +70,11 @@ enum Command {
     Theme {
         #[command(subcommand)]
         what: ThemeCmd,
+    },
+    /// Optional PopTalk chat assistant: check the backend, refresh its knowledge base
+    Chat {
+        #[command(subcommand)]
+        what: ChatCmd,
     },
 }
 
@@ -97,6 +106,14 @@ enum New {
         #[arg(long)]
         title: Option<String>,
     },
+}
+
+#[derive(Subcommand)]
+enum ChatCmd {
+    /// Verify the PopTalk backend is reachable and allows this site's origin (CORS)
+    Check,
+    /// Ask poptalk-rag to re-index now (run after `build` has exported the knowledge)
+    Sync,
 }
 
 #[derive(Subcommand)]
@@ -177,14 +194,25 @@ fn run(cli: Cli) -> Result<ExitCode, Error> {
             base_url,
             output,
             minify,
+            no_export,
         } => {
             let mut opts = options(&flags);
             opts.base_url = base_url;
             opts.out_dir = output;
             opts.minify = minify.then_some(true);
+            opts.skip_knowledge_export = no_export;
             let report = Builder::new(&root).build(&opts)?;
             print_report(&report);
             println!("Output: {}", report.output.display());
+            if let Some(k) = &report.knowledge {
+                println!(
+                    "Knowledge export: {} written, {} unchanged, {} removed in {}",
+                    k.written,
+                    k.unchanged,
+                    k.removed,
+                    k.dir.display()
+                );
+            }
         }
         Command::Serve {
             flags,
@@ -224,8 +252,16 @@ fn run(cli: Cli) -> Result<ExitCode, Error> {
             }
         }
         Command::Theme { what } => theme_cmd(&root, what)?,
+        Command::Chat { what } => return chat_cmd(&root, what),
     }
     Ok(ExitCode::SUCCESS)
+}
+
+fn chat_cmd(root: &Path, what: ChatCmd) -> Result<ExitCode, Error> {
+    match what {
+        ChatCmd::Check => chat::check(root),
+        ChatCmd::Sync => chat::sync(root),
+    }
 }
 
 fn theme_cmd(root: &Path, what: ThemeCmd) -> Result<(), Error> {

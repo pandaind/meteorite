@@ -38,6 +38,7 @@ pub fn run(root: &Path, opts: &BuildOptions) -> Result<CheckReport> {
     ));
     let mut o = opts.clone();
     o.out_dir = Some(scratch.clone());
+    o.skip_knowledge_export = true;
     // Build against a placeholder absolute origin so feeds and the sitemap are generated
     // too; links under it are treated as internal when analysing.
     o.base_url = Some(format!("{CHECK_ORIGIN}/"));

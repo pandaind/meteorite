@@ -121,6 +121,8 @@ pub fn run(
 ) -> Result<ExitCode, Error> {
     let origin = format!("http://{bind}:{port}");
     opts.base_url = Some(format!("{origin}/"));
+    // Previewing must not write into another project's knowledge folder.
+    opts.skip_knowledge_export = true;
 
     let primary = match &opts.theme {
         Some(t) => t.clone(),
@@ -358,7 +360,7 @@ fn toolbar_script(themes: &[String], active: &str) -> String {
         "<script>(function(){{var T=[{list}],A=\"{active}\";if(T.length<2)return;\
 try{{if(sessionStorage.getItem('meteorite-dev-bar')==='hidden')return}}catch(e){{}}\
 var h=document.createElement('div');h.setAttribute('data-meteorite-dev','');\
-h.style.cssText='position:fixed;right:14px;bottom:14px;z-index:2147483647;all:initial;position:fixed;right:14px;bottom:14px;z-index:2147483647';\
+h.style.cssText='position:fixed;left:14px;bottom:14px;z-index:2147483647;all:initial;position:fixed;left:14px;bottom:14px;z-index:2147483647';\
 var r=h.attachShadow({{mode:'open'}});\
 r.innerHTML='<style>.b{{font:12px/1 system-ui,sans-serif;display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:#12141f;color:#e8e9f3;border:1px solid #2c2f45;box-shadow:0 8px 30px rgba(0,0,0,.35)}}select{{font:inherit;color:inherit;background:#1b1e2e;border:1px solid #3a3e5a;border-radius:6px;padding:4px 6px}}button{{font:inherit;color:#9a9eb8;background:none;border:0;cursor:pointer;padding:0 2px}}span{{opacity:.7}}</style><div class=\"b\"><span>Theme</span><select aria-label=\"Preview theme\"></select><button aria-label=\"Hide theme picker\" title=\"Hide\">\\u00d7</button></div>';\
 var s=r.querySelector('select');T.forEach(function(t){{var o=document.createElement('option');o.value=t;o.textContent=t;if(t===A)o.selected=true;s.appendChild(o)}});\

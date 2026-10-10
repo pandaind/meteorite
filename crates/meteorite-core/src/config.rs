@@ -26,6 +26,8 @@ pub struct Config {
     pub feed: FeedConfig,
     pub search: SearchConfig,
     pub sitemap: bool,
+    /// Optional chat assistant ([PopTalk](https://github.com/pandaind/poptalk)). Off by default.
+    pub chat: ChatConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -98,7 +100,186 @@ impl Default for Config {
             feed: FeedConfig::default(),
             search: SearchConfig::default(),
             sitemap: true,
+            chat: ChatConfig::default(),
         }
+    }
+}
+
+/// When the chat widget script is fetched.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum ChatLoad {
+    /// Show a launcher button; nothing from the chat backend is requested until it is clicked.
+    #[default]
+    Click,
+    /// Load the widget when the browser is idle after the page has loaded.
+    Idle,
+    /// Load the widget with the page.
+    Immediate,
+}
+
+/// Optional PopTalk integration. Everything is off unless `provider` is set.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ChatConfig {
+    /// `poptalk` to enable the chat widget; empty (the default) disables it.
+    pub provider: String,
+    /// Base URL of your PopTalk backend, for example `https://chat.example.com`.
+    pub api_url: String,
+    /// Persona id on a multi-persona backend; empty uses the backend's default.
+    pub persona: String,
+    /// Widget language (`en`, `fr`, ...); empty uses the visitor's browser language.
+    pub lang: String,
+    /// `auto` follows the site's light/dark mode; or `dark` / `light`.
+    pub theme: String,
+    /// `auto` follows the site's accent colour; or any CSS colour.
+    pub accent: String,
+    pub load: ChatLoad,
+    /// `bundled` copies the widget shipped with Meteorite into the site; or an `https://` URL.
+    pub widget: String,
+    /// `system` makes no request to Google Fonts; `google` loads Inter from there.
+    pub fonts: String,
+    /// Text of the launcher button shown before the widget is loaded.
+    pub label: String,
+    pub knowledge: KnowledgeConfig,
+}
+
+/// Export the site as a knowledge base for poptalk-rag.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct KnowledgeConfig {
+    /// Directory to write Markdown files into, usually poptalk-rag's
+    /// `knowledge/<persona>/`. Relative paths are relative to the site root. Unset disables it.
+    pub dir: String,
+    /// Only export these sections (path prefixes such as `guide`); empty exports everything.
+    pub include: Vec<String>,
+    /// Never export these sections.
+    pub exclude: Vec<String>,
+    /// Base URL of poptalk-rag, used by `meteorite chat sync`.
+    pub rag_url: String,
+    /// Name of the environment variable holding the persona API key. The key itself must
+    /// never be written in config.yml.
+    pub key_env: String,
+}
+
+impl Default for ChatConfig {
+    fn default() -> Self {
+        Self {
+            provider: String::new(),
+            api_url: String::new(),
+            persona: String::new(),
+            lang: String::new(),
+            theme: "auto".into(),
+            accent: "auto".into(),
+            load: ChatLoad::default(),
+            widget: "bundled".into(),
+            fonts: "system".into(),
+            label: "Chat".into(),
+            knowledge: KnowledgeConfig::default(),
+        }
+    }
+}
+
+impl Default for KnowledgeConfig {
+    fn default() -> Self {
+        Self {
+            dir: String::new(),
+            include: Vec::new(),
+            exclude: Vec::new(),
+            rag_url: String::new(),
+            key_env: "POPTALK_RAG_KEY".into(),
+        }
+    }
+}
+
+impl ChatConfig {
+    pub fn enabled(&self) -> bool {
+        self.provider == "poptalk"
+    }
+
+    fn validate(&self) -> Result<()> {
+        let bad = |what: &str, why: &str| Error::Msg(format!("config.yml: chat.{what} {why}"));
+        if !self.provider.is_empty() && self.provider != "poptalk" {
+            return Err(bad(
+                "provider",
+                "must be `poptalk` (or empty to disable chat)",
+            ));
+        }
+        let http = |u: &str| {
+            (u.starts_with("http://") || u.starts_with("https://"))
+                && !u
+                    .chars()
+                    .any(|c| c.is_whitespace() || c == '"' || c == '\'' || c == '<')
+        };
+        if self.enabled() && !http(&self.api_url) {
+            return Err(bad(
+                "api_url",
+                "must be an http(s) URL, for example https://chat.example.com",
+            ));
+        }
+        if !self.persona.is_empty()
+            && !self
+                .persona
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+        {
+            return Err(bad(
+                "persona",
+                "may only contain letters, digits, `-` and `_`",
+            ));
+        }
+        if !self.lang.is_empty()
+            && !(self.lang.len() <= 8
+                && self
+                    .lang
+                    .chars()
+                    .all(|c| c.is_ascii_alphabetic() || c == '-'))
+        {
+            return Err(bad(
+                "lang",
+                "must be a language code such as `en` or `pt-BR`",
+            ));
+        }
+        if !matches!(self.theme.as_str(), "auto" | "dark" | "light") {
+            return Err(bad("theme", "must be `auto`, `dark` or `light`"));
+        }
+        if self.accent != "auto"
+            && (self.accent.is_empty()
+                || self.accent.len() > 64
+                || self
+                    .accent
+                    .chars()
+                    .any(|c| matches!(c, '"' | '\'' | '<' | '>' | ';' | '{' | '}' | '\\')))
+        {
+            return Err(bad(
+                "accent",
+                "must be `auto` or a plain CSS colour such as `#6c63ff`",
+            ));
+        }
+        if self.widget != "bundled" && !self.widget.starts_with("https://") {
+            return Err(bad("widget", "must be `bundled` or an https:// URL"));
+        }
+        if !matches!(self.fonts.as_str(), "system" | "google") {
+            return Err(bad("fonts", "must be `system` or `google`"));
+        }
+        if self.label.chars().count() > 40 {
+            return Err(bad("label", "is too long (40 characters at most)"));
+        }
+        let k = &self.knowledge;
+        if !k.rag_url.is_empty() && !http(&k.rag_url) {
+            return Err(bad("knowledge.rag_url", "must be an http(s) URL"));
+        }
+        if !k
+            .key_env
+            .chars()
+            .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_')
+        {
+            return Err(bad(
+                "knowledge.key_env",
+                "is the NAME of an environment variable (for example POPTALK_RAG_KEY), not the key itself",
+            ));
+        }
+        Ok(())
     }
 }
 
@@ -140,6 +321,7 @@ impl Config {
         for items in cfg.menus.values_mut() {
             items.sort_by_key(|m| m.weight);
         }
+        reject_secrets(&text, &path)?;
         let warnings = unknown_keys(&text);
         Ok((cfg, warnings))
     }
@@ -153,6 +335,7 @@ impl Config {
                 "config.yml: `paginate_by` must be at least 1".into(),
             ));
         }
+        self.chat.validate()?;
         for (section, pattern) in &self.permalinks {
             if !pattern.starts_with('/') {
                 return Err(Error::Msg(format!(
@@ -242,6 +425,49 @@ fn edit_distance(a: &str, b: &str) -> usize {
         prev = cur;
     }
     prev[b.len()]
+}
+
+/// Keys under `chat:` that look like credentials. config.yml is committed and published with the
+/// site, so secrets belong in the environment, never here.
+fn reject_secrets(text: &str, path: &Path) -> Result<()> {
+    let Ok(v) = serde_norway::from_str::<serde_norway::Value>(text) else {
+        return Ok(());
+    };
+    fn walk(v: &serde_norway::Value, trail: &str, out: &mut Vec<String>) {
+        if let Some(m) = v.as_mapping() {
+            for (k, val) in m {
+                let Some(k) = k.as_str() else { continue };
+                let at = format!("{trail}.{k}");
+                let lower = k.to_ascii_lowercase();
+                let secretish = [
+                    "secret", "password", "token", "apikey", "api_key", "api-key", "private",
+                ]
+                .iter()
+                .any(|s| lower.contains(s))
+                    || lower == "key";
+                // `key_env` is a variable *name*, which is exactly what we want.
+                if secretish && lower != "key_env" {
+                    out.push(at.clone());
+                }
+                walk(val, &at, out);
+            }
+        }
+    }
+    let mut found = Vec::new();
+    if let Some(chat) = v.get("chat") {
+        walk(chat, "chat", &mut found);
+    }
+    if found.is_empty() {
+        return Ok(());
+    }
+    Err(Error::content(
+        path,
+        format!(
+            "{} looks like a credential. config.yml is published with your site; put secrets in an \
+             environment variable and name it with `chat.knowledge.key_env`",
+            found.join(", ")
+        ),
+    ))
 }
 
 #[cfg(test)]

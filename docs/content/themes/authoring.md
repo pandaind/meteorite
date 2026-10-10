@@ -61,6 +61,7 @@ Available in every template:
 | `data` | object | Contents of `data/*.yml`, keyed by file name. |
 | `meteorite.version` | string | |
 | `theme` | object | The active theme's manifest: `name`, `version`, `skins`, `params`. |
+| `chat_widget()` | function | Renders the optional chat launcher and loader, or nothing when chat is off. Call it once before `</body>` as `{{ chat_widget() \| safe }}`. See [Add a chat assistant](/guide/chat/). |
 | `page` | object | The current page (always set; synthetic for listings). |
 
 Functions:

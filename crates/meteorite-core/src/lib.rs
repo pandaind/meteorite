@@ -2,12 +2,14 @@
 
 pub mod build;
 pub mod bundled;
+pub mod chat;
 pub mod check;
 pub mod config;
 pub mod content;
 pub mod error;
 pub mod feed;
 pub mod images;
+pub mod knowledge;
 pub mod markdown;
 pub mod minify;
 pub mod scaffold;

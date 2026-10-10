@@ -43,6 +43,15 @@ markdown:
 build:
   drafts: false
   minify: false
+
+# Optional: an AI or human chat assistant on every page, using PopTalk
+# (https://github.com/pandaind/poptalk). Uncomment and point it at your backend.
+# chat:
+#   provider: poptalk
+#   api_url: https://chat.example.com
+#   persona: my-site            # a persona id on a multi-persona backend (optional)
+#   knowledge:                  # export this site as poptalk-rag's knowledge base
+#     dir: ../poptalk-rag/knowledge/my-site
 "
     )
 }

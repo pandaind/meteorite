@@ -13,6 +13,7 @@ untrusted-but-sandboxed (templates and static files only).
 | Dev server | Serves only files under the output directory; `..`, encoded `..`, backslashes and NUL are refused. Binds to `127.0.0.1` by default. |
 | `theme add <git-url>` | `git clone --depth 1 -- <url>` with transports limited to https, ssh, git and file; no submodules; no prompts. |
 | Dev theme picker | `/__meteorite/theme` accepts only installed theme names (`[A-Za-z0-9_-]`) and redirects only to same-site paths; it exists only under `meteorite serve`. |
+| Chat integration | Off by default. `config.yml` entries under `chat:` that look like credentials are refused; the persona key is read only from an environment variable. The widget is self-hosted with an integrity hash, loaded only after a click by default, and contacts only your backend. The knowledge export refuses directories inside the site and never overwrites files it did not create. |
 | Templates | Tera has no filesystem, network or process access. |
 | Raw HTML in Markdown | Passed through unchanged. Don't render untrusted Markdown with Meteorite. |
 

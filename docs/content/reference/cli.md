@@ -12,6 +12,8 @@ Every command accepts `-r, --root <DIR>` to operate on a site other than the cur
 | `meteorite serve` | Build, serve and live-reload. |
 | `meteorite check` | Build to a scratch directory and report broken internal links. Exit code 1 on problems. |
 | `meteorite clean` | Delete `public/`. |
+| `meteorite chat check` | Verify the PopTalk backend is reachable and allows this site's origin. |
+| `meteorite chat sync` | Ask poptalk-rag to re-index now (key from the environment). |
 | `meteorite theme list` | Show installed and bundled themes. `*` marks the active one. |
 | `meteorite theme add <src> [--name <n>]` | Install a theme from a bundled name, a directory, or a git URL. |
 | `meteorite theme update [name]` | Replace an outdated bundled theme with this release's version; the old copy is kept in `themes/.backup/`. |
@@ -27,6 +29,7 @@ Every command accepts `-r, --root <DIR>` to operate on a site other than the cur
 | `--theme <name>` | Use this installed theme instead of the one in `config.yml`. |
 | `--base-url <url>` | Override `base_url`. |
 | `-o, --output <dir>` | Write somewhere other than `public/`. |
+| `--no-export` | Skip the poptalk-rag knowledge export even if `chat.knowledge.dir` is set. |
 
 Meteorite deletes and regenerates the output directory. For safety it refuses to touch a
 non-empty directory that it did not create (it leaves a `.meteorite-output` marker file), and
