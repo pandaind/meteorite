@@ -129,7 +129,7 @@ pub fn strip_tags(html: &str) -> String {
     let mut chars = html.char_indices().peekable();
     while let Some((i, c)) = chars.next() {
         if c == '<' {
-            let end = html[i..].find('>').map(|e| i + e).unwrap_or(html.len() - 1);
+            let end = html[i..].find('>').map(|e| i + e).unwrap_or(html.len());
             if is_block_tag(&html[i + 1..end.max(i + 1)]) {
                 out.push(' ');
             }
@@ -201,6 +201,9 @@ mod tests {
             "Hi there & you"
         );
         assert_eq!(strip_tags("<p>a<b>b</b>c</p><p>d</p>"), "abc d");
+        // Unterminated `<` followed by multi-byte text must not panic.
+        assert_eq!(strip_tags("x < é“"), "x");
+        assert_eq!(strip_tags("日本語 <b>太字</b>"), "日本語 太字");
         assert_eq!(
             strip_tags(&strip_anchors(
                 "<h2 id=\"x\">T <a class=\"anchor\" href=\"#x\">#</a></h2>"

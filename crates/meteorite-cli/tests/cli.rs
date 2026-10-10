@@ -84,6 +84,15 @@ fn tree(dir: &Path) -> BTreeMap<String, Vec<u8>> {
     out
 }
 
+/// Diagnostics are word-wrapped to the terminal width, which differs between machines.
+/// Collapse the wrapping so assertions can match phrases.
+fn flat(s: &str) -> String {
+    s.replace(['│', '╭', '╰', '─'], " ")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 fn read(root: &Path, rel: &str) -> String {
     fs::read_to_string(root.join("public").join(rel))
         .unwrap_or_else(|e| panic!("cannot read public/{rel}: {e}"))
@@ -442,7 +451,7 @@ fn build_never_wipes_a_foreign_directory() {
 
     let out = run(&site, &["build", "--output", precious.to_str().unwrap()]);
     assert!(!out.status.success());
-    assert!(String::from_utf8_lossy(&out.stderr).contains("not created by Meteorite"));
+    assert!(flat(&String::from_utf8_lossy(&out.stderr)).contains("not created by Meteorite"));
     assert!(precious.join("thesis.docx").is_file());
 
     // An empty directory, and a previous Meteorite output, are both fine.

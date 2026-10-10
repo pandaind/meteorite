@@ -4,7 +4,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use meteorite_core::build::{build, BuildOptions};
+use meteorite_core::build::BuildOptions;
 
 fn fixture() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../meteorite-cli/tests/fixtures/blog")
@@ -74,7 +74,7 @@ fn resizes_images_and_keeps_them_across_rebuilds() {
 #[test]
 fn explains_how_to_enable_images() {
     let dir = site("noimg");
-    let err = build(&dir, &BuildOptions::default())
+    let err = meteorite_core::build::build(&dir, &BuildOptions::default())
         .unwrap_err()
         .to_string();
     assert!(err.contains("--features images"), "{err}");

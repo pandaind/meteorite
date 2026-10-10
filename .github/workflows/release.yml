@@ -28,7 +28,7 @@ jobs:
         run: |
           name="meteorite-${GITHUB_REF_NAME}-${{ matrix.target }}"
           mkdir "$name"
-          cp LICENSE-MIT LICENSE-APACHE README.md CHANGELOG.md "$name/"
+          cp LICENSE README.md CHANGELOG.md "$name/"
           if [ "${{ runner.os }}" = "Windows" ]; then
             cp "target/${{ matrix.target }}/release/meteorite.exe" "$name/"
             7z a "$name.zip" "$name"

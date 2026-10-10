@@ -155,14 +155,23 @@ fn internal_target(link: &str) -> Option<String> {
     Some(percent_decode(path))
 }
 
+fn hex(b: u8) -> Option<u8> {
+    match b {
+        b'0'..=b'9' => Some(b - b'0'),
+        b'a'..=b'f' => Some(b - b'a' + 10),
+        b'A'..=b'F' => Some(b - b'A' + 10),
+        _ => None,
+    }
+}
+
 fn percent_decode(s: &str) -> String {
     let b = s.as_bytes();
     let mut out = Vec::with_capacity(b.len());
     let mut i = 0;
     while i < b.len() {
         if b[i] == b'%' && i + 2 < b.len() {
-            if let Ok(v) = u8::from_str_radix(&s[i + 1..i + 3], 16) {
-                out.push(v);
+            if let (Some(h), Some(l)) = (hex(b[i + 1]), hex(b[i + 2])) {
+                out.push(h * 16 + l);
                 i += 3;
                 continue;
             }
@@ -226,6 +235,10 @@ mod tests {
         assert_eq!(internal_target("/a/b/#c"), Some("/a/b/".into()));
         assert_eq!(internal_target("../x.png?v=1"), Some("../x.png".into()));
         assert_eq!(internal_target("/a%20b/"), Some("/a b/".into()));
+        // Malformed or non-ASCII escapes must not panic.
+        assert_eq!(internal_target("/a%é/"), Some("/a%é/".into()));
+        assert_eq!(internal_target("/100%/"), Some("/100%/".into()));
+        assert_eq!(internal_target("/%a"), Some("/%a".into()));
     }
 
     #[test]

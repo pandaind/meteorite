@@ -56,4 +56,4 @@ Requires Rust 1.88 or newer (the minimum is set by dependencies such as `time`).
 
 ## Licence
 
-MIT or Apache-2.0, at your option.
+Apache License 2.0. See [LICENSE](LICENSE).

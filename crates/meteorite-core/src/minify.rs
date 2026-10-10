@@ -52,14 +52,13 @@ pub fn html(input: &str) -> String {
 }
 
 fn raw_tag_at(s: &str) -> Option<&'static str> {
-    let after = s.strip_prefix('<')?;
+    // Work on bytes: the text after `<` may start with a multi-byte character, and
+    // slicing a &str at a byte offset inside it would panic.
+    let after = s.as_bytes().get(1..)?;
     RAW.iter().copied().find(|t| {
         after.len() > t.len()
-            && after[..t.len()].eq_ignore_ascii_case(t)
-            && matches!(
-                after.as_bytes()[t.len()],
-                b'>' | b' ' | b'\n' | b'\t' | b'/'
-            )
+            && after[..t.len()].eq_ignore_ascii_case(t.as_bytes())
+            && matches!(after[t.len()], b'>' | b' ' | b'\n' | b'\t' | b'/')
     })
 }
 
@@ -124,6 +123,20 @@ mod tests {
     fn html_keeps_script_content() {
         let src = "<script>\n  if (a  <  b) {}\n</script>\n<p>x</p>";
         assert!(html(src).starts_with("<script>\n  if (a  <  b) {}\n</script>"));
+    }
+
+    #[test]
+    fn html_survives_non_ascii_after_angle_bracket() {
+        for src in [
+            "a <“quoted” b",
+            "<é>x</é>",
+            "<日本>語</日本>",
+            "1 < 2 “ok”",
+            "<",
+        ] {
+            let _ = html(src); // must not panic
+        }
+        assert_eq!(html("<p>“hi”   there</p>"), "<p>“hi” there</p>");
     }
 
     #[test]
