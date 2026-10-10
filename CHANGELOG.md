@@ -6,29 +6,12 @@ in a major release.
 
 ## [Unreleased]
 
-- Redesigned `default` theme (0.3.0) for marketing and docs: sticky header with optional
-  GitHub link and call-to-action button, a front-matter-driven home page (hero with copyable
-  install command, stats, feature grid, showcase, quote, latest posts, CTA), card-grid listings,
-  article layout with a sticky table of contents, code copy buttons, and Open Graph tags.
-  New theme parameters: `github_url`, `header_cta_text`, `header_cta_url`, `logo`, `og_image`
-- `terminal` theme (0.3.0) given the same treatment: front-matter home page, cards, article
-  layout with table of contents, copy buttons, Open Graph tags, and a terminal-window install
-  command with a blinking cursor. It reads the same front matter and parameters as `default`
-  (breaking for `terminal` users: `accent` is now the light-mode colour and `accent_dark` the
-  dark-mode one, matching `default`)
-- Hero background: 16 falling meteors with glowing heads and a twinkling star field, in both
-  themes; disabled for `prefers-reduced-motion`
-- Output files are written atomically (temp file + rename), so the dev server never serves a
-  half-written file
-- `new site` starts from a home page that uses the marketing blocks
+## [0.1.1]
 
-- Light and dark mode in both bundled themes: a header toggle, remembered per visitor,
-  applied before first paint; `color_scheme` and `theme_toggle` theme parameters
-- Code highlighting now emits CSS classes and a generated `highlight.css` with a light and a
-  dark palette (`markdown.highlight_style: classes`, the default). Themes must link
-  `highlight.css`. `highlight_style: inline` keeps the previous single-palette behaviour
-- `markdown.highlight_theme_dark`; unknown highlight theme names are now an error that lists
-  the available ones instead of silently falling back
+- Package description no longer compares the project to other generators
+- Docs: security page wording
+- Release workflow builds Intel macOS binaries on the Apple Silicon runner (the old runner
+  image was retired) and can be re-run for an existing tag
 
 ## [0.1.0]
 
@@ -45,3 +28,25 @@ First release.
 - Optional image resizing (`--features images`)
 - Dev server with file watching, incremental rebuilds and WebSocket live reload
 - Diagnostics with source snippets for YAML errors
+- Redesigned `default` theme (0.3.0) for marketing and docs: sticky header with optional
+  GitHub link and call-to-action button, a front-matter-driven home page (hero with copyable
+  install command, stats, feature grid, showcase, quote, latest posts, CTA), card-grid listings,
+  article layout with a sticky table of contents, code copy buttons, and Open Graph tags.
+  New theme parameters: `github_url`, `header_cta_text`, `header_cta_url`, `logo`, `og_image`
+- `terminal` theme (0.3.0) given the same treatment: front-matter home page, cards, article
+  layout with table of contents, copy buttons, Open Graph tags, and a terminal-window install
+  command with a blinking cursor. It reads the same front matter and parameters as `default`
+  (breaking for `terminal` users: `accent` is now the light-mode colour and `accent_dark` the
+  dark-mode one, matching `default`)
+- Hero background: 16 falling meteors with glowing heads and a twinkling star field, in both
+  themes; disabled for `prefers-reduced-motion`
+- Output files are written atomically (temp file + rename), so the dev server never serves a
+  half-written file
+- `new site` starts from a home page that uses the marketing blocks
+- Light and dark mode in both bundled themes: a header toggle, remembered per visitor,
+  applied before first paint; `color_scheme` and `theme_toggle` theme parameters
+- Code highlighting now emits CSS classes and a generated `highlight.css` with a light and a
+  dark palette (`markdown.highlight_style: classes`, the default). Themes must link
+  `highlight.css`. `highlight_style: inline` keeps the previous single-palette behaviour
+- `markdown.highlight_theme_dark`; unknown highlight theme names are now an error that lists
+  the available ones instead of silently falling back
