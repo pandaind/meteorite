@@ -2,13 +2,28 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  # Re-run for an existing tag (for example to add a binary that failed to build):
+  #   gh workflow run release.yml -f tag=v0.1.0 -f target=x86_64-apple-darwin
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to build and attach binaries to"
+        required: true
+      target:
+        description: "Only build this target (empty = all)"
+        required: false
+        default: ""
 
 permissions:
   contents: write
 
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
+
 jobs:
   build:
     name: build (${{ matrix.target }})
+    if: ${{ inputs.target == '' || inputs.target == matrix.target }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -16,17 +31,20 @@ jobs:
         include:
           - { os: ubuntu-latest,  target: x86_64-unknown-linux-gnu }
           - { os: macos-latest,   target: aarch64-apple-darwin }
-          - { os: macos-13,       target: x86_64-apple-darwin }
+          # Intel Macs: cross-compiled on the Apple Silicon runner (macos-13 was retired).
+          - { os: macos-latest,   target: x86_64-apple-darwin }
           - { os: windows-latest, target: x86_64-pc-windows-msvc }
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
       - uses: dtolnay/rust-toolchain@stable
         with: { targets: "${{ matrix.target }}" }
       - run: cargo build --release -p meteorite --target ${{ matrix.target }}
       - name: Package
         shell: bash
         run: |
-          name="meteorite-${GITHUB_REF_NAME}-${{ matrix.target }}"
+          name="meteorite-${TAG}-${{ matrix.target }}"
           mkdir "$name"
           cp LICENSE README.md CHANGELOG.md "$name/"
           if [ "${{ runner.os }}" = "Windows" ]; then
@@ -40,4 +58,5 @@ jobs:
           fi
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.TAG }}
           files: ${{ env.ASSET }}
