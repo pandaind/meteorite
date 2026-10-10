@@ -6,6 +6,8 @@ in a major release.
 
 ## [Unreleased]
 
+## [0.5.0]
+
 - New bundled theme `orbit` for personal sites: profile home page, projects, blog, micro-blog
   notes, resume (from `data/resume.yml`, print-friendly), a links-in-bio page and social icons.
   Light and dark modes, three skins, search, structured data. `meteorite new site --theme orbit`
