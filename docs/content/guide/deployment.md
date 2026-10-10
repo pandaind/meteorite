@@ -54,9 +54,13 @@ the build prints a warning.
 
 ## Search
 
-With `search.enabled: true` the build writes `search-index.json`:
-`[{"title","url","description","tags","text"}]`. Load it from your theme with a few lines of
-JavaScript and filter in the browser:
+With `search.enabled: true` the build writes `search-index.json`
+(`[{"title","url","description","tags","text"}]`), and both bundled themes add a search box:
+press `/` or <kbd>Ctrl</kbd>+<kbd>K</kbd>, or use the magnifier in the header. Results are
+ranked (title, then tags, description and body), every word must match, and the index is only
+downloaded the first time someone searches.
+
+To build your own interface, load the index from any theme:
 
 ```js
 const index = await (await fetch("/search-index.json")).json();

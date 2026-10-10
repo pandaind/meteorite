@@ -55,6 +55,16 @@ pub enum Error {
     #[diagnostic(code(meteorite::template))]
     Template(String),
 
+    #[error("template syntax error: {message}")]
+    #[diagnostic(code(meteorite::template_syntax))]
+    TemplateSyntax {
+        message: String,
+        #[source_code]
+        src: NamedSource<String>,
+        #[label("here")]
+        span: SourceSpan,
+    },
+
     #[error("{0} already exists")]
     AlreadyExists(PathBuf),
 
@@ -102,7 +112,8 @@ impl Error {
     }
 }
 
-/// Flatten a Tera error and its causes into one readable line.
+/// Flatten a Tera error and its causes into one message. Syntax errors that carry a
+/// location become a diagnostic that points into the template.
 pub(crate) fn tera_err(e: tera::Error) -> Error {
     use std::error::Error as _;
     let mut msg = e.to_string();
@@ -112,5 +123,70 @@ pub(crate) fn tera_err(e: tera::Error) -> Error {
         msg.push_str(&s.to_string());
         cur = s.source();
     }
-    Error::Template(msg)
+    syntax_diagnostic(&msg).unwrap_or(Error::Template(msg))
+}
+
+/// Tera reports parse errors as `Failed to parse "<path>": --> <line>:<col> ... = <expected>`.
+fn syntax_diagnostic(msg: &str) -> Option<Error> {
+    let start = msg.find("Failed to parse \"")? + "Failed to parse \"".len();
+    let path = &msg[start..start + msg[start..].find('"')?];
+    let arrow = msg.find("--> ")? + 4;
+    let loc = &msg[arrow..];
+    let (line, rest) = loc.split_once(':')?;
+    let line: usize = line.trim().parse().ok()?;
+    let col: usize = rest
+        .chars()
+        .take_while(|c| c.is_ascii_digit())
+        .collect::<String>()
+        .parse()
+        .ok()?;
+    let detail = msg
+        .lines()
+        .rev()
+        .find_map(|l| l.trim().strip_prefix("= "))
+        .unwrap_or("could not parse this template");
+
+    let text = std::fs::read_to_string(path).ok()?;
+    let line_start: usize = text
+        .split_inclusive('\n')
+        .take(line.checked_sub(1)?)
+        .map(str::len)
+        .sum();
+    let line_text = text[line_start..].split('\n').next().unwrap_or("");
+    let col_bytes = line_text
+        .char_indices()
+        .nth(col.saturating_sub(1))
+        .map(|(i, _)| i)
+        .unwrap_or(0);
+    Some(Error::TemplateSyntax {
+        message: detail.to_string(),
+        src: NamedSource::new(path, text),
+        span: (line_start + col_bytes, 1).into(),
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_tera_syntax_location() {
+        let dir = std::env::temp_dir().join(format!("meteorite-err-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("bad.html");
+        std::fs::write(&file, "<p>ok</p>\n{% if x %}\n<b>{{ a | }}</b>\n").unwrap();
+        let msg = format!(
+            "Failed to parse \"{}\": --> 3:11\n  |\n3 | <b>{{{{ a | }}}}</b>\n  |           ^---\n  |\n  = expected a filter name",
+            file.display()
+        );
+        match syntax_diagnostic(&msg) {
+            Some(Error::TemplateSyntax { message, span, .. }) => {
+                assert_eq!(message, "expected a filter name");
+                let text = std::fs::read_to_string(&file).unwrap();
+                assert_eq!(&text[span.offset()..span.offset() + 1], "}");
+            }
+            other => panic!("unexpected: {other:?}"),
+        }
+        let _ = std::fs::remove_dir_all(dir);
+    }
 }

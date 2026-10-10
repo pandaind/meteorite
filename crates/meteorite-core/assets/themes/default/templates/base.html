@@ -36,6 +36,7 @@
       </nav>
       <div class="header-tools">
         {% if config.params.github_url %}<a class="icon-btn" href="{{ config.params.github_url }}" aria-label="GitHub repository" rel="noopener">{{ m::github() | safe }}</a>{% endif %}
+        {% if config.search.enabled %}<button id="search-open" class="icon-btn search-open" type="button" hidden aria-label="Search" aria-keyshortcuts="/" title="Search (/)">{{ m::icon(name="search") | safe }}</button>{% endif %}
         {% if config.params.theme_toggle %}<button id="theme-toggle" class="icon-btn theme-toggle" type="button" hidden aria-label="Switch colour mode">
           <span class="i-sun">{{ m::icon(name="sun") | safe }}</span><span class="i-moon">{{ m::icon(name="moon") | safe }}</span>
         </button>{% endif %}
@@ -56,5 +57,16 @@
       {% if config.params.github_url %}<a class="icon-btn" href="{{ config.params.github_url }}" aria-label="GitHub repository" rel="noopener">{{ m::github() | safe }}</a>{% endif %}
     </div>
   </footer>
+  {% if config.search.enabled %}
+  <dialog id="search-dialog" class="search-dialog" data-index="{{ url(path='search-index.json') }}" data-base="{{ url(path='/') }}" aria-label="Search">
+    <form method="dialog" class="search-box">
+      {{ m::icon(name="search", size=18) | safe }}
+      <input id="search-input" type="search" placeholder="Search the site" autocomplete="off" spellcheck="false" aria-label="Search" aria-controls="search-results">
+      <kbd>esc</kbd>
+    </form>
+    <ul id="search-results" class="search-results" role="listbox"></ul>
+    <p id="search-status" class="search-status" aria-live="polite"></p>
+  </dialog>
+  {% endif %}
 </body>
 </html>

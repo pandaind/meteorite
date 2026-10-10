@@ -32,6 +32,9 @@ menus:
 taxonomies: [tags]
 paginate_by: 10
 
+search:
+  enabled: true            # adds a search box (press / or Ctrl+K) to the theme
+
 markdown:
   highlight: true
   highlight_theme: InspiredGitHub          # code colours in light mode

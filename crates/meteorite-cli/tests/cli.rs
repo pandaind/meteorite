@@ -280,6 +280,112 @@ fn bundled_themes_ship_a_color_mode_toggle() {
 }
 
 #[test]
+fn template_syntax_error_points_at_the_line() {
+    let site = fixture_copy("tplsyntax");
+    fs::create_dir_all(site.join("templates")).unwrap();
+    fs::write(
+        site.join("templates/page.html"),
+        "{% extends \"base.html\" %}\n{% block content %}\n<h1>{{ page.meta.title | }}</h1>\n{% endblock content %}\n",
+    )
+    .unwrap();
+    let out = run(&site, &["build"]);
+    assert!(!out.status.success());
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(err.contains("templates/page.html:3"), "{err}");
+    assert!(err.contains("template syntax error"), "{err}");
+}
+
+#[test]
+fn template_render_error_names_the_variable_and_line() {
+    let site = fixture_copy("tplrender");
+    fs::create_dir_all(site.join("templates")).unwrap();
+    fs::write(
+        site.join("templates/page.html"),
+        "{% extends \"base.html\" %}\n{% block content %}\n<p>ok</p>\n<p>{{ no_such_variable }}</p>\n{% endblock content %}\n",
+    )
+    .unwrap();
+    let out = run(&site, &["build"]);
+    assert!(!out.status.success());
+    let err = flat(&String::from_utf8_lossy(&out.stderr));
+    assert!(err.contains("no_such_variable"), "{err}");
+    assert!(err.contains("templates/page.html:4"), "{err}");
+}
+
+#[test]
+fn unknown_config_keys_are_reported() {
+    let site = fixture_copy("cfgtypo");
+    let cfg = fs::read_to_string(site.join("config.yml")).unwrap();
+    fs::write(
+        site.join("config.yml"),
+        format!("baseurl: https://x.test/\n{cfg}"),
+    )
+    .unwrap();
+    let out = run(&site, &["build"]);
+    assert!(out.status.success(), "a typo must not fail the build");
+    let err = flat(&String::from_utf8_lossy(&out.stderr));
+    assert!(
+        err.contains("unknown key `baseurl` (did you mean `base_url`?)"),
+        "{err}"
+    );
+}
+
+#[test]
+fn bundled_themes_render_a_search_dialog_when_enabled() {
+    let dir = tmp("search");
+    let site = dir.join("s");
+    ok(&dir, &["new", "site", site.to_str().unwrap()]);
+    ok(&site, &["theme", "add", "terminal"]);
+    for theme in ["default", "terminal"] {
+        let cfg = fs::read_to_string(site.join("config.yml")).unwrap();
+        let cfg: String = cfg
+            .lines()
+            .map(|l| {
+                if l.starts_with("theme:") {
+                    format!("theme: {theme}")
+                } else {
+                    l.to_string()
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        fs::write(site.join("config.yml"), &cfg).unwrap();
+        ok(&site, &["build"]);
+        let home = read(&site, "index.html");
+        assert!(
+            home.contains("id=\"search-dialog\""),
+            "{theme}: dialog missing"
+        );
+        assert!(
+            home.contains("data-index=\"https://example.com/search-index.json\""),
+            "{theme}"
+        );
+        assert!(home.contains("id=\"search-open\""), "{theme}");
+        assert!(
+            read(&site, "search-index.json").contains("Hello, world"),
+            "{theme}"
+        );
+        assert!(
+            read(&site, "app.js").contains("search-dialog"),
+            "{theme}: app.js lacks search"
+        );
+
+        // Disabled: no dialog, no button, no index.
+        fs::write(
+            site.join("config.yml"),
+            cfg.replace("enabled: true", "enabled: false"),
+        )
+        .unwrap();
+        ok(&site, &["build"]);
+        assert!(
+            !read(&site, "index.html").contains("search-dialog"),
+            "{theme}"
+        );
+        assert!(!site.join("public/search-index.json").exists(), "{theme}");
+        fs::write(site.join("config.yml"), &cfg).unwrap();
+    }
+}
+
+#[test]
 fn drafts_and_future_flags() {
     let site = fixture_copy("flags");
     ok(&site, &["build", "--drafts", "--future"]);

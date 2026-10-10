@@ -41,8 +41,9 @@ search:
   enabled: false
 ```
 
-Unknown keys are ignored, so a typo does not fail the build. YAML syntax errors point at the
-file, line and column.
+Unknown keys do not fail the build, but each one is reported as a warning with a suggestion
+(`unknown key `baseurl` (did you mean `base_url`?)`), so typos don't go unnoticed. YAML syntax
+errors point at the file, line and column; template errors point at the template line.
 
 ## Theme parameters
 

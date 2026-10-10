@@ -124,6 +124,11 @@ impl Default for FeedConfig {
 
 impl Config {
     pub fn load(root: &Path) -> Result<Self> {
+        Self::load_with_warnings(root).map(|(cfg, _)| cfg)
+    }
+
+    /// Like [`Config::load`], also returning one warning per unrecognised key (typos).
+    pub fn load_with_warnings(root: &Path) -> Result<(Self, Vec<String>)> {
         let path = root.join("config.yml");
         let text = std::fs::read_to_string(&path).map_err(io_err(&path))?;
         let mut cfg: Config = if text.trim().is_empty() {
@@ -135,7 +140,8 @@ impl Config {
         for items in cfg.menus.values_mut() {
             items.sort_by_key(|m| m.weight);
         }
-        Ok(cfg)
+        let warnings = unknown_keys(&text);
+        Ok((cfg, warnings))
     }
 
     fn validate(&self) -> Result<()> {
@@ -155,5 +161,132 @@ impl Config {
             }
         }
         Ok(())
+    }
+}
+
+/// Keys of a YAML mapping, or none if it is not one.
+fn keys(v: &serde_norway::Value) -> Vec<String> {
+    v.as_mapping()
+        .map(|m| {
+            m.keys()
+                .filter_map(|k| k.as_str().map(str::to_string))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// Warn about keys that are not part of the configuration, with a suggestion when one is close.
+///
+/// The set of valid keys is read from the serialised default `Config`, so it can never drift
+/// from the struct. Free-form maps (`params`, `menus`, `permalinks`) are not checked.
+fn unknown_keys(text: &str) -> Vec<String> {
+    let Ok(user) = serde_norway::from_str::<serde_norway::Value>(text) else {
+        return Vec::new();
+    };
+    let Ok(known) = serde_norway::to_value(Config::default()) else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    let mut check = |scope: &str, user_keys: Vec<String>, known_keys: Vec<String>| {
+        for k in user_keys {
+            if known_keys.contains(&k) {
+                continue;
+            }
+            let at = if scope.is_empty() {
+                k.clone()
+            } else {
+                format!("{scope}.{k}")
+            };
+            let hint = known_keys
+                .iter()
+                .filter(|c| is_close(&k, c))
+                .min_by_key(|c| edit_distance(&k, c))
+                .map(|c| {
+                    let full = if scope.is_empty() {
+                        c.to_string()
+                    } else {
+                        format!("{scope}.{c}")
+                    };
+                    format!(" (did you mean `{full}`?)")
+                })
+                .unwrap_or_default();
+            out.push(format!(
+                "config.yml: unknown key `{at}`{hint}; it has no effect"
+            ));
+        }
+    };
+    check("", keys(&user), keys(&known));
+    for section in ["markdown", "build", "feed", "search"] {
+        if let (Some(u), Some(k)) = (user.get(section), known.get(section)) {
+            check(section, keys(u), keys(k));
+        }
+    }
+    out
+}
+
+fn is_close(a: &str, b: &str) -> bool {
+    let allowed = 2.max(a.chars().count().max(b.chars().count()) / 3);
+    edit_distance(a, b) <= allowed || a.starts_with(b) || b.starts_with(a)
+}
+
+fn edit_distance(a: &str, b: &str) -> usize {
+    let a: Vec<char> = a.chars().collect();
+    let b: Vec<char> = b.chars().collect();
+    let mut prev: Vec<usize> = (0..=b.len()).collect();
+    for (i, ca) in a.iter().enumerate() {
+        let mut cur = vec![i + 1];
+        for (j, cb) in b.iter().enumerate() {
+            let sub = prev[j] + usize::from(ca != cb);
+            cur.push(sub.min(prev[j + 1] + 1).min(cur[j] + 1));
+        }
+        prev = cur;
+    }
+    prev[b.len()]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn warns_about_typos_with_suggestions() {
+        let w = unknown_keys(
+            "title: x\nbaseurl: y\ntaxonomy: [tags]\nmarkdown:\n  hilight: true\nbuild:\n  minfy: true\n",
+        );
+        let joined = w.join("\n");
+        assert!(
+            joined.contains("unknown key `baseurl` (did you mean `base_url`?)"),
+            "{joined}"
+        );
+        assert!(
+            joined.contains("`taxonomy` (did you mean `taxonomies`?)"),
+            "{joined}"
+        );
+        assert!(
+            joined.contains("`markdown.hilight` (did you mean `markdown.highlight`?)"),
+            "{joined}"
+        );
+        assert!(
+            joined.contains("`build.minfy` (did you mean `build.minify`?)"),
+            "{joined}"
+        );
+    }
+
+    #[test]
+    fn valid_and_free_form_keys_are_silent() {
+        let ok = "title: x\nbase_url: /\ntheme: default\nparams:\n  anything: 1\n  at_all: {a: b}\nmenus:\n  main: []\npermalinks:\n  blog: /x/\nmarkdown:\n  highlight: true\n  highlight_style: classes\npaginate_by: 5\n";
+        assert!(unknown_keys(ok).is_empty(), "{:?}", unknown_keys(ok));
+        // every key of the default config is accepted
+        let all = serde_norway::to_string(&Config::default()).unwrap();
+        assert!(unknown_keys(&all).is_empty());
+    }
+
+    #[test]
+    fn unrelated_unknown_key_has_no_suggestion() {
+        let w = unknown_keys("zzzzzzzz: 1\n");
+        assert_eq!(
+            w,
+            vec!["config.yml: unknown key `zzzzzzzz`; it has no effect".to_string()]
+        );
     }
 }

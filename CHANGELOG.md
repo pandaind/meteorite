@@ -6,6 +6,14 @@ in a major release.
 
 ## [Unreleased]
 
+- Search: both bundled themes add a search dialog (press `/` or Ctrl+K, or use the header
+  button) when `search.enabled: true`. Ranked results with highlighted matches; the index is
+  fetched on first use. `new site` enables it
+- Configuration typos are reported: an unknown key in `config.yml` produces a warning with a
+  "did you mean" suggestion instead of being silently ignored
+- Template errors point at the problem: syntax errors show the source line with a marker, and
+  render errors (for example an undefined variable) say which template line is likely at fault
+
 ## [0.1.1]
 
 - Package description no longer compares the project to other generators

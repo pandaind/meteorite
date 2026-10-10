@@ -113,7 +113,8 @@ impl Builder {
         let root = self.root.clone();
         let mut warnings = Vec::new();
 
-        let mut config = Config::load(&root)?;
+        let (mut config, config_warnings) = Config::load_with_warnings(&root)?;
+        warnings.extend(config_warnings);
         if let Some(b) = &opts.base_url {
             config.base_url = b.clone();
         }
@@ -235,6 +236,9 @@ impl Builder {
             },
         );
 
+        // Site templates override the theme's, so search them first when locating errors.
+        let template_dirs = [root.join("templates"), theme_dir.join("templates")];
+
         // Jobs.
         let mut jobs: Vec<Job> = (0..site.all.len())
             .filter(|&i| !site.all[i].is_index)
@@ -266,7 +270,7 @@ impl Builder {
 
         let rendered: Vec<Result<(PathBuf, Vec<u8>)>> = jobs
             .par_iter()
-            .map(|job| render_job(job, &tera, &site, &config, &base))
+            .map(|job| render_job(job, &tera, &site, &config, &base, &template_dirs))
             .collect();
 
         // Collect outputs. Later inserts win: theme static < site static < assets < pages.
@@ -769,6 +773,7 @@ fn render_job(
     site: &Site,
     config: &Config,
     base: &Context,
+    template_dirs: &[PathBuf],
 ) -> Result<(PathBuf, Vec<u8>)> {
     let mut ctx = base.clone();
     let (template, out_path): (String, PathBuf) = match job {
@@ -908,7 +913,12 @@ fn render_job(
             Job::NotFound => "404".to_string(),
         };
         match tera_err(e) {
-            Error::Template(m) => Error::Template(format!("rendering {what} with {template}: {m}")),
+            Error::Template(m) => {
+                let hint = locate_in_templates(template_dirs, &m)
+                    .map(|(p, line)| format!(" (likely at {}:{line})", p.display()))
+                    .unwrap_or_default();
+                Error::Template(format!("rendering {what} with {template}: {m}{hint}"))
+            }
             other => other,
         }
     })?;
@@ -1046,4 +1056,31 @@ fn write_atomic(dest: &Path, bytes: &[u8]) -> Result<()> {
         let _ = fs::remove_file(&tmp);
         io_err(dest)(e)
     })
+}
+
+/// Find where a render error probably came from: the first template line that mentions the
+/// first backtick-quoted name in the message (for example the missing variable).
+fn locate_in_templates(dirs: &[PathBuf], message: &str) -> Option<(PathBuf, usize)> {
+    let start = message.find('`')? + 1;
+    let needle = &message[start..start + message[start..].find('`')?];
+    if needle.is_empty() {
+        return None;
+    }
+    // Try the full dotted name first, then its last segment.
+    let last = needle.rsplit('.').next().unwrap_or(needle);
+    for pattern in [needle, last] {
+        for dir in dirs {
+            for entry in WalkDir::new(dir).sort_by_file_name().into_iter().flatten() {
+                if !entry.file_type().is_file() {
+                    continue;
+                }
+                if let Ok(text) = fs::read_to_string(entry.path()) {
+                    if let Some(i) = text.lines().position(|l| l.contains(pattern)) {
+                        return Some((entry.path().to_path_buf(), i + 1));
+                    }
+                }
+            }
+        }
+    }
+    None
 }
