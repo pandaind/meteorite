@@ -46,6 +46,8 @@ meteorite chat check
   integrity hash and its MIT licence), so no CDN is contacted. Fonts come from the visitor's
   system by default; set `fonts: google` to use Inter from Google Fonts.
 - The widget follows your site's light/dark mode and skin accent live.
+- Before the first message the widget asks for a name and a valid email address (or phone number
+  with `data-collect="phone"`). PopTalk 1.2 or later requires this; there is no anonymous mode.
 
 ### Options
 
@@ -61,6 +63,7 @@ meteorite chat check
 | `widget` | `bundled` | `bundled`, or an `https://` URL you manage |
 | `fonts` | `system` | `system` or `google` |
 | `label` | `Chat` | Launcher text |
+| `welcome` | persona's `welcomeMessage` | First line in the chat window, for example `Ask me about Meteorite themes`. Plain text, 200 characters at most. Without it the widget uses the persona's `welcomeMessage` from the backend, or a generic greeting |
 
 ## 2. Use your site as the knowledge base (optional)
 

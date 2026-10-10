@@ -141,6 +141,9 @@ pub struct ChatConfig {
     pub fonts: String,
     /// Text of the launcher button shown before the widget is loaded.
     pub label: String,
+    /// First line shown in the chat window. Empty uses the persona's `welcomeMessage` on the
+    /// backend, or the widget's generic greeting. Plain text.
+    pub welcome: String,
     pub knowledge: KnowledgeConfig,
 }
 
@@ -180,6 +183,7 @@ impl Default for ChatConfig {
             widget: "bundled".into(),
             fonts: "system".into(),
             label: "Chat".into(),
+            welcome: String::new(),
             knowledge: KnowledgeConfig::default(),
         }
     }
@@ -271,6 +275,9 @@ impl ChatConfig {
         }
         if self.label.chars().count() > 40 {
             return Err(bad("label", "is too long (40 characters at most)"));
+        }
+        if self.welcome.chars().count() > 200 {
+            return Err(bad("welcome", "is too long (200 characters at most)"));
         }
         let k = &self.knowledge;
         if !k.rag_url.is_empty() && !http(&k.rag_url) {

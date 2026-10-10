@@ -13,7 +13,7 @@ use crate::config::{ChatConfig, ChatLoad};
 use crate::util::{html_escape, join_url};
 
 /// Version of the widget in `assets/vendor/poptalk/`. Keep in sync when refreshing it.
-pub const WIDGET_VERSION: &str = "1.1.0";
+pub const WIDGET_VERSION: &str = "1.3.0";
 
 static WIDGET_JS: &str = include_str!("../assets/vendor/poptalk/poptalk.min.js");
 static WIDGET_LICENSE: &str = include_str!("../assets/vendor/poptalk/LICENSE");
@@ -82,6 +82,7 @@ fn snippet(chat: &ChatConfig, base_url: &str, bundled: Option<&BundledWidget>) -
         ),
         ("persona", Value::String(chat.persona.clone())),
         ("lang", Value::String(chat.lang.clone())),
+        ("welcome", Value::String(chat.welcome.clone())),
         ("theme", Value::String(chat.theme.clone())),
         ("accent", Value::String(chat.accent.clone())),
         ("fonts", Value::String(chat.fonts.clone())),
@@ -132,7 +133,7 @@ function accent(){if(C.accent!=='auto')return C.accent;try{return getComputedSty
 function sync(){var p=window.PopTalk;if(!p)return;p.setTheme(mode());var a=accent();if(a)p.setAccent(a)}
 function load(open){if(started){if(open&&window.PopTalk)window.PopTalk.open();return}started=true;
 var s=document.createElement('script');s.src=C.src;s.async=true;if(C.integrity){s.integrity=C.integrity;s.crossOrigin='anonymous'}
-s.setAttribute('data-api-url',C.api);if(C.persona)s.setAttribute('data-persona',C.persona);if(C.lang)s.setAttribute('data-lang',C.lang);
+s.setAttribute('data-api-url',C.api);if(C.persona)s.setAttribute('data-persona',C.persona);if(C.lang)s.setAttribute('data-lang',C.lang);if(C.welcome)s.setAttribute('data-welcome',C.welcome);
 s.setAttribute('data-fonts',C.fonts);s.setAttribute('data-theme',mode());var a=accent();if(a)s.setAttribute('data-accent',a);
 s.onload=function(){if(btn)btn.hidden=true;sync();if(open&&window.PopTalk)window.PopTalk.open()};
 s.onerror=function(){started=false;if(btn){btn.hidden=false;btn.setAttribute('data-error','1')}};
@@ -191,6 +192,18 @@ mod tests {
         assert!(
             html.contains("https://cdn.example.com/poptalk.js") && !html.contains("integrity\":")
         );
+    }
+
+    #[test]
+    fn welcome_is_passed_to_the_widget_and_cannot_break_out_of_the_script() {
+        let mut c = enabled();
+        c.welcome = "Ask about </script><script>alert(1)</script>".into();
+        let html = snippet(&c, "/", None);
+        assert!(html.contains("data-welcome"));
+        // `</` is escaped, so the text cannot close the tag; a bare `<script>` inside script data is inert.
+        assert!(html.contains("<\\/script>"));
+        let script = &html[html.find("<script>").unwrap()..];
+        assert_eq!(script.matches("</script>").count(), 1);
     }
 
     #[test]

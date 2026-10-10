@@ -6,6 +6,15 @@ in a major release.
 
 ## [Unreleased]
 
+## [0.4.0]
+
+- Chat: new `chat.welcome` option sets the first line shown in the chat window. Without it the
+  widget uses the persona's `welcomeMessage` from the PopTalk backend, or a generic greeting
+  instead of the previous portfolio wording
+- Chat: the bundled widget is PopTalk 1.3.0. Visitors are asked for a name and a valid email
+  (or phone) before their first message, and a PopTalk backend older than 1.2 does not enforce
+  this; a PopTalk 1.2 or later backend rejects widgets older than 1.2, so upgrade both together
+
 ## [0.3.1]
 
 - Fixed: sites built with the bundled themes had no favicon (no icon link, `/favicon.ico` 404).
