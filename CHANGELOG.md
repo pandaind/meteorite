@@ -6,6 +6,8 @@ in a major release.
 
 ## [Unreleased]
 
+## [0.5.2]
+
 - Fixed: the bundled themes were not usable on phones.
   - default 0.5.2 and terminal 0.5.2: a long unbroken word or URL in a post no longer makes the page
     scroll sideways, card grids no longer overflow at 320px, and the menu wraps into rows instead of
