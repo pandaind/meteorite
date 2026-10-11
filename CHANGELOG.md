@@ -6,6 +6,8 @@ in a major release.
 
 ## [Unreleased]
 
+## [0.5.3]
+
 - Fixed: `meteorite serve --bind 0.0.0.0` (the usual way to serve from a container) put
   `http://0.0.0.0:<port>/` in every link and asset URL. It now advertises `127.0.0.1`, which is
   the address you can open
