@@ -6,6 +6,15 @@ in a major release.
 
 ## [Unreleased]
 
+- Fixed: the bundled themes were not usable on phones.
+  - default 0.5.2 and terminal 0.5.2: a long unbroken word or URL in a post no longer makes the page
+    scroll sideways, card grids no longer overflow at 320px, and the menu wraps into rows instead of
+    a scrolling strip with a visible scrollbar
+  - orbit 0.1.1 and devlog 0.1.7: the header becomes two rows (brand and tools, then the menu), the
+    home page no longer overflows because of the activity graph, and long names and URLs wrap
+  - Checked at 320, 375 and 768px on the starter sites plus a page with a wide table, a long code
+    line, a long URL and a wide image. Run `meteorite theme update` to get the fixes in a site
+
 ## [0.5.1]
 
 - Fixed: `meteorite serve` wrote its preview into `public/`, so running a production `meteorite build`

@@ -1,5 +1,5 @@
 name: devlog
-version: 0.1.6
+version: 0.1.7
 description: "A software engineer's site in the style of a repository: profile, pinned projects, activity graph, commit-log blog, notes, changelog resume and links"
 author: Meteorite
 meteorite_api: 1

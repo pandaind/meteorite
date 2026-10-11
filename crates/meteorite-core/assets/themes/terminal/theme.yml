@@ -1,5 +1,5 @@
 name: terminal
-version: 0.5.1
+version: 0.5.2
 description: Monospace terminal look with a meteor-shower hero, light and dark modes
 author: Meteorite
 meteorite_api: 1
