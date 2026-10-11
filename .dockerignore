@@ -1,0 +1,6 @@
+target
+.git
+.relay
+docs/public
+**/public
+node_modules

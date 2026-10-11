@@ -6,6 +6,10 @@ in a major release.
 
 ## [Unreleased]
 
+- Fixed: `meteorite serve --bind 0.0.0.0` (the usual way to serve from a container) put
+  `http://0.0.0.0:<port>/` in every link and asset URL. It now advertises `127.0.0.1`, which is
+  the address you can open
+
 ## [0.5.2]
 
 - Fixed: the bundled themes were not usable on phones.

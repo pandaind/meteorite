@@ -112,6 +112,17 @@ struct AppState {
     reload: broadcast::Sender<()>,
 }
 
+/// The host to put in links. `0.0.0.0` (all interfaces, what you bind inside a container) is not an
+/// address a browser can be sent to, so advertise the loopback address you would actually type.
+fn advertised_host(bind: &str) -> String {
+    match bind {
+        "0.0.0.0" => "127.0.0.1".to_string(),
+        "::" | "[::]" => "[::1]".to_string(),
+        other if other.contains(':') && !other.starts_with('[') => format!("[{other}]"),
+        other => other.to_string(),
+    }
+}
+
 /// Where `serve` writes the preview: a folder in the system temp directory that is unique to
 /// the site root, so it never collides with `public/` or with another site's preview.
 fn preview_dir(root: &Path) -> PathBuf {
@@ -132,7 +143,7 @@ pub fn run(
     port: u16,
     open: bool,
 ) -> Result<ExitCode, Error> {
-    let origin = format!("http://{bind}:{port}");
+    let origin = format!("http://{}:{port}", advertised_host(bind));
     opts.base_url = Some(format!("{origin}/"));
     // The preview has its own output folder, so a production `meteorite build` run in another
     // terminal cannot overwrite it with pages that point at the live site.
@@ -565,6 +576,16 @@ mod tests {
         let js = toolbar_script(&["default".into(), "terminal".into()], "terminal");
         assert!(js.contains("T=[\"default\",\"terminal\"]") && js.contains("A=\"terminal\""));
         assert!(js.contains("/__meteorite/theme?name="));
+    }
+
+    #[test]
+    fn links_never_point_at_the_wildcard_address() {
+        assert_eq!(advertised_host("0.0.0.0"), "127.0.0.1");
+        assert_eq!(advertised_host("::"), "[::1]");
+        assert_eq!(advertised_host("127.0.0.1"), "127.0.0.1");
+        assert_eq!(advertised_host("192.168.1.20"), "192.168.1.20");
+        assert_eq!(advertised_host("::1"), "[::1]");
+        assert_eq!(advertised_host("localhost"), "localhost");
     }
 
     #[test]
