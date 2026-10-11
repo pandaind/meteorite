@@ -1,0 +1,89 @@
+name: Publish to crates.io
+
+# Runs when a release tag is pushed (the same `v*` tags that build the binaries), after checking
+# that the tag matches the version in Cargo.toml. It is safe to re-run: a version that is already
+# on crates.io is skipped.
+#
+# One-time setup: create an API token at https://crates.io/settings/tokens with the
+# `publish-new` and `publish-update` scopes, limited to the `meteorite` and `meteorite-core`
+# crates, and save it as the repository secret CARGO_REGISTRY_TOKEN.
+#
+# Re-run for an existing tag:
+#   gh workflow run publish-crates.yml -f tag=v0.5.1
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to publish (for example v0.5.1)"
+        required: true
+
+permissions:
+  contents: read
+
+# Never publish two releases at once, and never cancel one half way through.
+concurrency:
+  group: publish-crates
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
+  CARGO_TERM_COLOR: always
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Check the tag matches the crate version
+        run: |
+          version="$(cargo metadata --no-deps --format-version 1 \
+            | jq -r '.packages[] | select(.name == "meteorite") | .version')"
+          if [ "${TAG#v}" != "$version" ]; then
+            echo "::error::tag ${TAG} does not match the crate version ${version} in Cargo.toml"
+            exit 1
+          fi
+          echo "VERSION=${version}" >> "$GITHUB_ENV"
+
+      - name: Test
+        run: cargo test --workspace --locked
+
+      - name: Publish meteorite-core, then meteorite
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          published() {
+            # 200 means this exact version is already on crates.io.
+            curl -fsS -A "meteorite-release-workflow" -o /dev/null \
+              "https://crates.io/api/v1/crates/$1/${VERSION}" 2>/dev/null
+          }
+          todo=()
+          for crate in meteorite-core meteorite; do
+            if published "$crate"; then
+              echo "$crate ${VERSION} is already on crates.io; skipping"
+            else
+              todo+=("$crate")
+            fi
+          done
+          if [ "${#todo[@]}" -eq 0 ]; then
+            echo "Nothing to publish."
+            exit 0
+          fi
+          if [ -z "${CARGO_REGISTRY_TOKEN}" ]; then
+            echo "::error::the repository secret CARGO_REGISTRY_TOKEN is not set"
+            exit 1
+          fi
+          # The library goes first: the binary crate depends on it by version, and cargo waits
+          # for the crates.io index to list it before publishing the next crate.
+          for crate in "${todo[@]}"; do
+            echo "::group::cargo publish -p ${crate}"
+            cargo publish --locked -p "${crate}"
+            echo "::endgroup::"
+          done
