@@ -1,0 +1,6 @@
+# Shown on the home page, the footer and the links page. `icon` is one of: github, linkedin, x,
+# mastodon, bluesky, youtube, instagram, mail, rss, globe.
+- { name: GitHub, url: https://github.com/you, icon: github, handle: "@you" }
+- { name: LinkedIn, url: https://www.linkedin.com/in/you, icon: linkedin, handle: you }
+- { name: Mastodon, url: https://mastodon.social/@you, icon: mastodon, handle: "@you@mastodon.social" }
+- { name: Email, url: "mailto:you@example.com", icon: mail, handle: you@example.com }

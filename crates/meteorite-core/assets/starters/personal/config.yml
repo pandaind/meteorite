@@ -1,0 +1,48 @@
+# Site configuration. Docs: https://github.com/pandaind/meteorite
+title: Your Name
+# Set this to your production URL. `meteorite serve` overrides it locally.
+base_url: https://example.com/
+language: en
+theme: {{theme}}
+
+params:
+  tagline: Software engineer, writer and maker
+  location: Your City
+  email: you@example.com
+  # avatar: avatar.jpg            # put the file in static/
+  # resume_pdf: resume.pdf        # a PDF in static/ adds a Download button to /resume/
+  # color_scheme: auto            # auto | light | dark
+  # skin: ...                     # see the theme's skins in themes/<name>/theme.yml
+  # skin_switcher: true           # let visitors pick a skin
+
+menus:
+  main:
+    - { name: Work, url: /projects/, weight: 1 }
+    - { name: Writing, url: /blog/, weight: 2 }
+    - { name: Notes, url: /notes/, weight: 3 }
+    - { name: Resume, url: /resume/, weight: 4 }
+
+taxonomies: [tags]
+paginate_by: 10
+
+feed:
+  enabled: true
+
+search:
+  enabled: true
+
+markdown:
+  highlight: true
+  highlight_theme: InspiredGitHub
+  highlight_theme_dark: base16-ocean.dark
+
+build:
+  drafts: false
+  minify: false
+
+# Optional: an AI or human chat assistant on every page, using PopTalk
+# (https://github.com/pandaind/poptalk). Uncomment and point it at your backend.
+# chat:
+#   provider: poptalk
+#   api_url: https://chat.example.com
+#   welcome: Ask me about my work or writing

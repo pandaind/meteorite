@@ -141,8 +141,21 @@ Shortcodes are small reusable templates from `templates/shortcodes/`.
     )
 }
 
+/// Replaces each `{{key}}` in a starter file with its value.
+fn fill(template: &str, values: &[(&str, &str)]) -> String {
+    let mut out = template.to_string();
+    for (key, value) in values {
+        out = out.replace(&format!("{{{{{key}}}}}"), value);
+    }
+    out
+}
+
 /// The starter for the personal-site themes (`orbit`, `devlog`): a profile, projects, a blog,
 /// micro-blog notes, a resume and a links page. Both themes read the same content.
+///
+/// The files live in `assets/starters/personal/` and are embedded at build time. `project.md`
+/// and `note.md` are templates used for the sample projects and notes; the rest are written
+/// as they are (with `{{theme}}` and `{{today}}` filled in).
 fn personal_files(theme: &str, today: &str) -> Vec<(&'static str, String)> {
     // A few dates spread over the past months, so the activity graph has something to draw.
     let ago = |days: i64| -> String {
@@ -150,255 +163,48 @@ fn personal_files(theme: &str, today: &str) -> Vec<(&'static str, String)> {
             .format("%Y-%m-%d")
             .to_string()
     };
-    let config = "\
-# Site configuration. Docs: https://github.com/pandaind/meteorite
-title: Your Name
-# Set this to your production URL. `meteorite serve` overrides it locally.
-base_url: https://example.com/
-language: en
-theme: orbit
 
-params:
-  tagline: Software engineer, writer and maker
-  location: Your City
-  email: you@example.com
-  # avatar: avatar.jpg            # put the file in static/
-  # resume_pdf: resume.pdf        # a PDF in static/ adds a Download button to /resume/
-  # color_scheme: auto            # auto | light | dark
-  # skin: ...                     # see the theme's skins in themes/<name>/theme.yml
-  # skin_switcher: true           # let visitors pick a skin
-
-menus:
-  main:
-    - { name: Work, url: /projects/, weight: 1 }
-    - { name: Writing, url: /blog/, weight: 2 }
-    - { name: Notes, url: /notes/, weight: 3 }
-    - { name: Resume, url: /resume/, weight: 4 }
-
-taxonomies: [tags]
-paginate_by: 10
-
-feed:
-  enabled: true
-
-search:
-  enabled: true
-
-markdown:
-  highlight: true
-  highlight_theme: InspiredGitHub
-  highlight_theme_dark: base16-ocean.dark
-
-build:
-  drafts: false
-  minify: false
-
-# Optional: an AI or human chat assistant on every page, using PopTalk
-# (https://github.com/pandaind/poptalk). Uncomment and point it at your backend.
-# chat:
-#   provider: poptalk
-#   api_url: https://chat.example.com
-#   welcome: Ask me about my work or writing
-"
-    .replace("theme: orbit", &format!("theme: {theme}"));
-
-    let home = "\
----
-title: Home
-description: Software engineer, writer and maker.
-profile:
-  greeting: Hi, I'm
-  name: Your Name
-  role: Software engineer
-  headline: I build calm, fast things for the web and write about how they work.
-  status: { text: Open to new projects, state: open, url: /links/ }
-  actions:
-    - { name: See my work, url: /projects/, style: primary }
-    - { name: Resume, url: /resume/, style: secondary }
-stats:
-  - { value: 8 years, label: building for the web }
-  - { value: 40+, label: projects shipped }
-  - { value: 120, label: posts and notes }
-sections: [projects, activity, posts, notes, skills, contact]
-projects: { title: Selected work, limit: 4 }
-posts: { title: Writing, limit: 3 }
-notes: { title: Notes, limit: 3 }
-skills:
-  title: What I work with
-  items: [Rust, TypeScript, Python, PostgreSQL, Accessibility, Performance, Technical writing, Design systems]
-contact:
-  title: Let's work together
-  text: I take on a few projects each year. Tell me what you are building.
----
-A short paragraph about you goes here. Say what you do, who you do it for and what you care
-about. Edit it in `content/_index.md`.
-"
-    .to_string();
-
-    let projects_index = "\
----
-title: Work
-description: Things I have designed and built.
-layout: projects
-sort_by: weight
----
-"
-    .to_string();
-
-    let project = |title: &str, weight: u32, year: u32, desc: &str, stack: &str, date: &str| {
-        format!(
-            "\
----
-title: {title}
-date: {date}
-description: {desc}
-weight: {weight}
-year: {year}
-role: Design and engineering
-stack: [{stack}]
-# cover: projects/{slug}.jpg     # an image in static/
-# repo: https://github.com/you/{slug}
-# demo: https://example.com
----
-## The problem
-
-Describe what you set out to solve and for whom.
-
-## What I built
-
-Explain the approach, the decisions that mattered and what you would do differently.
-
-## Result
-
-Numbers, quotes or links that show it worked.
-",
-            slug = title.to_lowercase().replace(' ', "-")
+    let project =
+        |title: &str, weight: u32, year: u32, description: &str, stack: &str, age: i64| {
+            fill(
+                include_str!("../assets/starters/personal/content/project.md"),
+                &[
+                    ("title", title),
+                    ("slug", &title.to_lowercase().replace(' ', "-")),
+                    ("date", &ago(age)),
+                    ("description", description),
+                    ("weight", &weight.to_string()),
+                    ("year", &year.to_string()),
+                    ("stack", stack),
+                ],
+            )
+        };
+    let note = |text: &str, tags: &str, age: i64| {
+        fill(
+            include_str!("../assets/starters/personal/content/note.md"),
+            &[("text", text), ("tags", tags), ("date", &ago(age))],
         )
     };
 
-    let blog_index = "\
----
-title: Writing
-description: Longer posts on building software.
-sort_by: date
-paginate_by: 8
----
-"
-    .to_string();
-
-    let hello = format!(
-        "\
----
-title: Hello, world
-date: {today}
-tags: [intro]
-description: Why this site exists and what to expect here.
----
-Welcome. This is the first post on my new site.
-
-<!-- more -->
-
-## What you will find here
-
-Long-form writing lives in `content/blog`. Short thoughts go in `content/notes`, and the things
-I have built are under `content/projects`.
-
-```rust
-fn main() {{
-    println!(\"hello from my site\");
-}}
-```
-"
-    );
-
-    let notes_index = "\
----
-title: Notes
-description: Short thoughts, links and things I am learning.
-layout: notes
-full_content: true
-sort_by: date
-paginate_by: 10
----
-A micro-blog. No titles needed, just write.
-"
-    .to_string();
-
-    let note = |text: &str, date: &str, tags: &str| {
-        format!("---\ndate: {date}\ntags: [{tags}]\n---\n{text}\n")
-    };
-
-    let resume = "\
----
-title: Resume
-description: Experience, education and skills.
-layout: resume
----
-"
-    .to_string();
-
-    let links = "\
----
-title: Your Name
-description: Find me elsewhere.
-layout: links
-links:
-  - { title: Read the blog, url: /blog/, description: Longer posts, icon: book }
-  - { title: See my work, url: /projects/, description: Selected projects, icon: code }
----
-"
-    .to_string();
-
-    let socials = "\
-# Shown on the home page, the footer and the links page. `icon` is one of: github, linkedin, x,
-# mastodon, bluesky, youtube, instagram, mail, rss, globe.
-- { name: GitHub, url: https://github.com/you, icon: github, handle: \"@you\" }
-- { name: LinkedIn, url: https://www.linkedin.com/in/you, icon: linkedin, handle: you }
-- { name: Mastodon, url: https://mastodon.social/@you, icon: mastodon, handle: \"@you@mastodon.social\" }
-- { name: Email, url: \"mailto:you@example.com\", icon: mail, handle: you@example.com }
-"
-    .to_string();
-
-    let resume_data = "\
-basics:
-  name: Your Name
-  label: Software engineer
-  email: you@example.com
-  location: Your City
-  url: https://example.com
-  summary: Engineer with a focus on fast, accessible web products and clear writing.
-work:
-  - company: Company Name
-    role: Senior Engineer
-    start: 2022
-    location: Remote
-    summary: What the team does and your part in it.
-    highlights:
-      - Cut page load time by 40% by rebuilding the rendering pipeline
-      - Led a team of four through a platform migration
-  - company: Earlier Company
-    role: Engineer
-    start: 2018
-    end: 2022
-    highlights:
-      - Shipped the first version of the customer dashboard
-education:
-  - school: University Name
-    degree: BSc Computer Science
-    start: 2014
-    end: 2018
-skills:
-  - { group: Languages, items: [Rust, TypeScript, Python, SQL] }
-  - { group: Practices, items: [Accessibility, Performance, Technical writing] }
-languages:
-  - { name: English, level: Native }
-"
-    .to_string();
+    macro_rules! starter {
+        ($path:literal) => {
+            include_str!(concat!("../assets/starters/personal/", $path)).to_string()
+        };
+    }
 
     vec![
-        ("config.yml", config),
-        ("content/_index.md", home),
-        ("content/projects/_index.md", projects_index),
+        (
+            "config.yml",
+            fill(
+                include_str!("../assets/starters/personal/config.yml"),
+                &[("theme", theme)],
+            ),
+        ),
+        ("content/_index.md", starter!("content/_index.md")),
+        (
+            "content/projects/_index.md",
+            starter!("content/projects/_index.md"),
+        ),
         (
             "content/projects/first-project.md",
             project(
@@ -407,7 +213,7 @@ languages:
                 2025,
                 "A one-line summary of what it is and why it matters.",
                 "Rust, WebAssembly",
-                &ago(21),
+                21,
             ),
         ),
         (
@@ -418,40 +224,49 @@ languages:
                 2024,
                 "Another thing you made, in a sentence.",
                 "TypeScript, PostgreSQL",
-                &ago(95),
+                95,
             ),
         ),
-        ("content/blog/_index.md", blog_index),
-        ("content/blog/hello-world.md", hello),
-        ("content/notes/_index.md", notes_index),
+        ("content/blog/_index.md", starter!("content/blog/_index.md")),
+        (
+            "content/blog/hello-world.md",
+            fill(
+                include_str!("../assets/starters/personal/content/blog/hello-world.md"),
+                &[("today", today)],
+            ),
+        ),
+        (
+            "content/notes/_index.md",
+            starter!("content/notes/_index.md"),
+        ),
         (
             "content/notes/first-note.md",
             note(
                 "Notes are short. Write one in a minute, with *Markdown*, a [link](https://example.com) or a code `snippet`.",
-                &ago(3),
                 "meta",
+                3,
             ),
         ),
         (
             "content/notes/reading.md",
             note(
                 "Currently reading something good, and taking notes in public.",
-                &ago(12),
                 "reading",
+                12,
             ),
         ),
         (
             "content/notes/til.md",
             note(
                 "TIL: `cargo install --locked` avoids surprise dependency upgrades.",
-                &ago(40),
                 "rust",
+                40,
             ),
         ),
-        ("content/resume.md", resume),
-        ("content/links.md", links),
-        ("data/socials.yml", socials),
-        ("data/resume.yml", resume_data),
+        ("content/resume.md", starter!("content/resume.md")),
+        ("content/links.md", starter!("content/links.md")),
+        ("data/socials.yml", starter!("data/socials.yml")),
+        ("data/resume.yml", starter!("data/resume.yml")),
         (".gitignore", "public/\n".to_string()),
     ]
 }
