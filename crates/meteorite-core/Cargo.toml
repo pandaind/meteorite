@@ -18,6 +18,9 @@ default = []
 # Image resizing via the `resize_image` template function.
 images = ["dep:image"]
 
+[lints]
+workspace = true
+
 [dependencies]
 serde.workspace = true
 serde_norway.workspace = true

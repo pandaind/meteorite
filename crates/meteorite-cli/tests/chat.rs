@@ -1,6 +1,8 @@
 //! End-to-end tests for the PopTalk chat integration and the knowledge-base export.
 
 #![allow(unused_imports)]
+// Tests read top to bottom as a list of checks; the length lints are meant for library code.
+#![allow(clippy::too_many_lines, clippy::cognitive_complexity)]
 mod common;
 use common::*;
 

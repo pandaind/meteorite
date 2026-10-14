@@ -1,6 +1,8 @@
 //! End-to-end tests for building a site: output, front matter, errors, `check`, `new` and `clean`.
 
 #![allow(unused_imports)]
+// Tests read top to bottom as a list of checks; the length lints are meant for library code.
+#![allow(clippy::too_many_lines, clippy::cognitive_complexity)]
 mod common;
 use common::*;
 

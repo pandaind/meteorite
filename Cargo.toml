@@ -10,6 +10,12 @@ repository = "https://github.com/pandaind/meteorite"
 homepage = "https://pandaind.github.io/meteorite/"
 rust-version = "1.88"
 
+# Flags the kind of code that is hard to read. `too_many_lines` warns above 100 lines
+# (see clippy.toml); the other keeps branching and nesting in check.
+[workspace.lints.clippy]
+too_many_lines = "warn"
+cognitive_complexity = "warn"
+
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_norway = "0.9"

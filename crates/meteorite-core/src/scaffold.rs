@@ -157,13 +157,52 @@ fn fill(template: &str, values: &[(&str, &str)]) -> String {
 /// and `note.md` are templates used for the sample projects and notes; the rest are written
 /// as they are (with `{{theme}}` and `{{today}}` filled in).
 fn personal_files(theme: &str, today: &str) -> Vec<(&'static str, String)> {
-    // A few dates spread over the past months, so the activity graph has something to draw.
+    macro_rules! starter {
+        ($path:literal) => {
+            include_str!(concat!("../assets/starters/personal/", $path)).to_string()
+        };
+    }
+
+    let mut files = vec![
+        (
+            "config.yml",
+            fill(starter!("config.yml").as_str(), &[("theme", theme)]),
+        ),
+        ("content/_index.md", starter!("content/_index.md")),
+        (
+            "content/projects/_index.md",
+            starter!("content/projects/_index.md"),
+        ),
+        ("content/blog/_index.md", starter!("content/blog/_index.md")),
+        (
+            "content/blog/hello-world.md",
+            fill(
+                starter!("content/blog/hello-world.md").as_str(),
+                &[("today", today)],
+            ),
+        ),
+        (
+            "content/notes/_index.md",
+            starter!("content/notes/_index.md"),
+        ),
+        ("content/resume.md", starter!("content/resume.md")),
+        ("content/links.md", starter!("content/links.md")),
+        ("data/socials.yml", starter!("data/socials.yml")),
+        ("data/resume.yml", starter!("data/resume.yml")),
+        (".gitignore", "public/\n".to_string()),
+    ];
+    files.extend(personal_samples());
+    files
+}
+
+/// The sample projects and notes. Their dates are spread over the past months so the activity
+/// graph on the home page has something to draw.
+fn personal_samples() -> Vec<(&'static str, String)> {
     let ago = |days: i64| -> String {
         (chrono::Utc::now() - chrono::Duration::days(days))
             .format("%Y-%m-%d")
             .to_string()
     };
-
     let project =
         |title: &str, weight: u32, year: u32, description: &str, stack: &str, age: i64| {
             fill(
@@ -186,25 +225,7 @@ fn personal_files(theme: &str, today: &str) -> Vec<(&'static str, String)> {
         )
     };
 
-    macro_rules! starter {
-        ($path:literal) => {
-            include_str!(concat!("../assets/starters/personal/", $path)).to_string()
-        };
-    }
-
     vec![
-        (
-            "config.yml",
-            fill(
-                include_str!("../assets/starters/personal/config.yml"),
-                &[("theme", theme)],
-            ),
-        ),
-        ("content/_index.md", starter!("content/_index.md")),
-        (
-            "content/projects/_index.md",
-            starter!("content/projects/_index.md"),
-        ),
         (
             "content/projects/first-project.md",
             project(
@@ -226,18 +247,6 @@ fn personal_files(theme: &str, today: &str) -> Vec<(&'static str, String)> {
                 "TypeScript, PostgreSQL",
                 95,
             ),
-        ),
-        ("content/blog/_index.md", starter!("content/blog/_index.md")),
-        (
-            "content/blog/hello-world.md",
-            fill(
-                include_str!("../assets/starters/personal/content/blog/hello-world.md"),
-                &[("today", today)],
-            ),
-        ),
-        (
-            "content/notes/_index.md",
-            starter!("content/notes/_index.md"),
         ),
         (
             "content/notes/first-note.md",
@@ -263,11 +272,6 @@ fn personal_files(theme: &str, today: &str) -> Vec<(&'static str, String)> {
                 40,
             ),
         ),
-        ("content/resume.md", starter!("content/resume.md")),
-        ("content/links.md", starter!("content/links.md")),
-        ("data/socials.yml", starter!("data/socials.yml")),
-        ("data/resume.yml", starter!("data/resume.yml")),
-        (".gitignore", "public/\n".to_string()),
     ]
 }
 

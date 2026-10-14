@@ -1,6 +1,8 @@
 //! End-to-end tests for themes: the bundled themes, skins, updating, `theme add` and the starters.
 
 #![allow(unused_imports)]
+// Tests read top to bottom as a list of checks; the length lints are meant for library code.
+#![allow(clippy::too_many_lines, clippy::cognitive_complexity)]
 mod common;
 use common::*;
 

@@ -19,6 +19,9 @@ images = ["meteorite-core/images"]
 name = "meteorite"
 path = "src/main.rs"
 
+[lints]
+workspace = true
+
 [dependencies]
 meteorite-core = { path = "../meteorite-core", version = "0.5.3" }
 clap.workspace = true
