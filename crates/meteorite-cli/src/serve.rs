@@ -136,6 +136,7 @@ fn preview_dir(root: &Path) -> PathBuf {
     std::env::temp_dir().join(format!("meteorite-serve-{hash:016x}"))
 }
 
+/// Builds the site once, watches its sources and serves it with live reload until Ctrl-C.
 pub fn run(
     root: &Path,
     mut opts: BuildOptions,
@@ -153,18 +154,29 @@ pub fn run(
     // Previewing must not write into another project's knowledge folder.
     opts.skip_knowledge_export = true;
 
+    let dev = build_first_theme(root, opts)?;
+
+    let (reload_tx, _) = broadcast::channel::<()>(16);
+    let (watcher, event_rx) = watch_sources(root, &dev.public)?;
+    spawn_rebuild_loop(dev.clone(), event_rx, reload_tx.clone());
+
+    let state = Arc::new(AppState {
+        dev,
+        reload: reload_tx,
+    });
+    let addr = format!("{bind}:{port}");
+    let rt = tokio::runtime::Runtime::new().map_err(|e| Error::Msg(e.to_string()))?;
+    rt.block_on(serve_http(state, addr, origin, open))?;
+    drop(watcher);
+    Ok(ExitCode::SUCCESS)
+}
+
+/// Builds the site's own theme before the server starts, so errors show immediately and the
+/// first request is served from a finished build.
+fn build_first_theme(root: &Path, opts: BuildOptions) -> Result<Arc<Dev>, Error> {
     let primary = match &opts.theme {
         Some(t) => t.clone(),
         None => Config::load(root)?.theme,
-    };
-    // Build the first theme up front so errors show immediately.
-    let probe = Dev {
-        root: root.to_path_buf(),
-        opts: opts.clone(),
-        public: PathBuf::new(),
-        primary: primary.clone(),
-        builders: Mutex::new(HashMap::new()),
-        built: RwLock::new(HashSet::new()),
     };
     let mut first = Builder::new(root);
     let report = first.build(&opts)?;
@@ -176,22 +188,27 @@ pub fn run(
     for w in &report.warnings {
         eprintln!("warning: {w}");
     }
-    let dev = Arc::new(Dev {
+    Ok(Arc::new(Dev {
+        root: root.to_path_buf(),
+        opts,
         public: report.output.clone(),
+        primary: primary.clone(),
         builders: Mutex::new(HashMap::from([(primary.clone(), first)])),
-        built: RwLock::new(HashSet::from([primary.clone()])),
-        ..probe
-    });
+        built: RwLock::new(HashSet::from([primary])),
+    }))
+}
 
-    let (reload_tx, _) = broadcast::channel::<()>(16);
+/// Watches the folders that influence the output. Returns the watcher (keep it alive) and a
+/// channel that receives one message per relevant file event.
+fn watch_sources(
+    root: &Path,
+    public: &Path,
+) -> Result<(notify::RecommendedWatcher, mpsc::Receiver<()>), Error> {
     let (event_tx, event_rx) = mpsc::channel::<()>();
-
-    // Watch the source directories that influence the output.
     let root_abs = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
-    let out_abs = dev
-        .public
+    let out_abs = public
         .canonicalize()
-        .unwrap_or_else(|_| dev.public.clone());
+        .unwrap_or_else(|_| public.to_path_buf());
     let root_for_events = root_abs.clone();
     let mut watcher = notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
         if let Ok(ev) = res {
@@ -218,15 +235,17 @@ pub fn run(
         }
     }
     let _ = watcher.watch(&root_abs, RecursiveMode::NonRecursive); // config.yml
+    Ok((watcher, event_rx))
+}
 
-    // Rebuild thread: debounce bursts of events, rebuild, then tell browsers to reload.
-    let tx = reload_tx.clone();
-    let rebuild_dev = dev.clone();
+/// Rebuilds in the background: debounces bursts of file events, rebuilds every theme that has
+/// been requested, then tells the browsers to reload.
+fn spawn_rebuild_loop(dev: Arc<Dev>, events: mpsc::Receiver<()>, reload: broadcast::Sender<()>) {
     std::thread::spawn(move || {
-        while event_rx.recv().is_ok() {
-            while event_rx.recv_timeout(Duration::from_millis(120)).is_ok() {}
+        while events.recv().is_ok() {
+            while events.recv_timeout(Duration::from_millis(120)).is_ok() {}
             let mut any_ok = false;
-            for (name, result) in rebuild_dev.rebuild_all() {
+            for (name, result) in dev.rebuild_all() {
                 match result {
                     Ok(r) => {
                         any_ok = true;
@@ -244,36 +263,34 @@ pub fn run(
                 }
             }
             if any_ok {
-                let _ = tx.send(());
+                let _ = reload.send(());
             }
         }
     });
+}
 
-    let state = Arc::new(AppState {
-        dev,
-        reload: reload_tx,
-    });
-    let addr = format!("{bind}:{port}");
-    let rt = tokio::runtime::Runtime::new().map_err(|e| Error::Msg(e.to_string()))?;
-    rt.block_on(async move {
-        let app = Router::new()
-            .route(WS_PATH, get(ws_handler))
-            .route(THEME_PATH, get(theme_handler))
-            .fallback(get(file_handler))
-            .with_state(state);
-        let listener = tokio::net::TcpListener::bind(&addr)
-            .await
-            .map_err(|e| Error::Msg(format!("could not listen on {addr}: {e}")))?;
-        println!("Serving {origin}/  (Ctrl-C to stop)");
-        if open {
-            open_browser(&origin);
-        }
-        axum::serve(listener, app)
-            .await
-            .map_err(|e| Error::Msg(e.to_string()))
-    })?;
-    drop(watcher);
-    Ok(ExitCode::SUCCESS)
+/// The HTTP server: the live-reload socket, the theme switcher and the static files.
+async fn serve_http(
+    state: Arc<AppState>,
+    addr: String,
+    origin: String,
+    open: bool,
+) -> Result<(), Error> {
+    let app = Router::new()
+        .route(WS_PATH, get(ws_handler))
+        .route(THEME_PATH, get(theme_handler))
+        .fallback(get(file_handler))
+        .with_state(state);
+    let listener = tokio::net::TcpListener::bind(&addr)
+        .await
+        .map_err(|e| Error::Msg(format!("could not listen on {addr}: {e}")))?;
+    println!("Serving {origin}/  (Ctrl-C to stop)");
+    if open {
+        open_browser(&origin);
+    }
+    axum::serve(listener, app)
+        .await
+        .map_err(|e| Error::Msg(e.to_string()))
 }
 
 fn open_browser(url: &str) {
