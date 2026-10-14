@@ -214,18 +214,20 @@ fn parent_of(path: &str) -> &str {
     path.rsplit_once('/').map(|(p, _)| p).unwrap_or("")
 }
 
-pub fn build_model(config: &Config, raws: Vec<RawPage>, opts: &ModelOptions) -> Result<Site> {
-    let mut site = Site {
-        all: Vec::new(),
-        sections: BTreeMap::new(),
-        taxonomies: BTreeMap::new(),
-        skipped_drafts: 0,
-        skipped_future: 0,
-        skipped_expired: 0,
-    };
-    let mut by_url: HashMap<String, PathBuf> = HashMap::new();
+/// Where a source file sits in `content/`, and what kind of page that makes it.
+struct Layout {
+    /// File name without extension.
+    stem: String,
+    /// Folders between `content/` and the file.
+    dir_comps: Vec<String>,
+    /// `_index.md` (or a top-level `index.md`): the page that describes a section.
+    is_section_index: bool,
+    /// `post/index.md`: a page bundle, whose folder name is the slug.
+    is_bundle: bool,
+}
 
-    for raw in raws {
+impl Layout {
+    fn of(raw: &RawPage) -> Layout {
         let stem = raw
             .source
             .file_stem()
@@ -241,9 +243,123 @@ pub fn build_model(config: &Config, raws: Vec<RawPage>, opts: &ModelOptions) -> 
                     .collect()
             })
             .unwrap_or_default();
-
         let is_section_index = stem == "_index" || (stem == "index" && dir_comps.is_empty());
         let is_bundle = stem == "index" && !dir_comps.is_empty();
+        Layout {
+            stem,
+            dir_comps,
+            is_section_index,
+            is_bundle,
+        }
+    }
+
+    /// The section folders and the text the slug is derived from.
+    fn section_and_slug_source(&self) -> (Vec<String>, String) {
+        if self.is_section_index {
+            (self.dir_comps.clone(), String::new())
+        } else if self.is_bundle {
+            let (last, parents) = self.dir_comps.split_last().unwrap();
+            (parents.to_vec(), last.clone())
+        } else {
+            (self.dir_comps.clone(), self.stem.clone())
+        }
+    }
+}
+
+/// Why a page is left out of the build.
+enum Skip {
+    Draft,
+    Future,
+    Expired,
+}
+
+/// Decides whether a page is left out: drafts, future-dated pages and expired pages.
+/// Section index pages are never skipped for their date.
+fn skip_reason(
+    raw: &RawPage,
+    date: Option<NaiveDate>,
+    is_section_index: bool,
+    opts: &ModelOptions,
+) -> Result<Option<Skip>> {
+    if raw.meta.draft && !opts.drafts {
+        return Ok(Some(Skip::Draft));
+    }
+    if is_section_index {
+        return Ok(None);
+    }
+    if date.is_some_and(|d| d > opts.today) && !opts.future {
+        return Ok(Some(Skip::Future));
+    }
+    if let Some(exp) = &raw.meta.expiry_date {
+        let exp = parse_date(exp).ok_or_else(|| {
+            Error::content(
+                &raw.file,
+                format!("`expiry_date: {exp}` is not a valid date"),
+            )
+        })?;
+        if exp <= opts.today {
+            return Ok(Some(Skip::Expired));
+        }
+    }
+    Ok(None)
+}
+
+/// The URL of a page: the section's own URL for an index, otherwise the section plus a slug,
+/// or the section's `permalinks` pattern when one applies. The slug is `slug:` from front
+/// matter or is derived from the file (or bundle folder) name.
+fn page_url(
+    config: &Config,
+    raw: &RawPage,
+    layout: &Layout,
+    section_path: &str,
+    slug_source: &str,
+    date: Option<NaiveDate>,
+) -> Result<String> {
+    if layout.is_section_index {
+        return Ok(section_url(section_path));
+    }
+    let slug = match &raw.meta.slug {
+        Some(s) => {
+            if !slug_ok(s) {
+                return Err(Error::InvalidPath(format!(
+                    "{}: slug `{s}` may not be empty, start with `.`, or contain `/`, `\\`, `:` or `..`",
+                    raw.file.display()
+                )));
+            }
+            s.clone()
+        }
+        None => {
+            let s = slugify(slug_source);
+            if s.is_empty() {
+                return Err(Error::InvalidPath(format!(
+                    "{}: cannot derive a URL from `{slug_source}`; set `slug:` in front matter",
+                    raw.file.display()
+                )));
+            }
+            s
+        }
+    };
+    match pattern_for(config, section_path) {
+        Some(pattern) => expand_permalink(pattern, &slug, section_path, raw, date),
+        None => Ok(format!("{}{slug}/", section_url(section_path))),
+    }
+}
+
+/// Turns the loaded Markdown files into pages, then groups them into sections and taxonomies.
+/// Pages still have empty `content`; Markdown is rendered later by the build.
+pub fn build_model(config: &Config, raws: Vec<RawPage>, opts: &ModelOptions) -> Result<Site> {
+    let mut site = Site {
+        all: Vec::new(),
+        sections: BTreeMap::new(),
+        taxonomies: BTreeMap::new(),
+        skipped_drafts: 0,
+        skipped_future: 0,
+        skipped_expired: 0,
+    };
+    let mut by_url: HashMap<String, PathBuf> = HashMap::new();
+
+    for raw in raws {
+        let layout = Layout::of(&raw);
 
         // Dates are checked first so a bad date is reported even for drafts.
         let date_parsed = match &raw.meta.date {
@@ -255,76 +371,37 @@ pub fn build_model(config: &Config, raws: Vec<RawPage>, opts: &ModelOptions) -> 
             })?),
             None => None,
         };
-        if raw.meta.draft && !opts.drafts {
-            site.skipped_drafts += 1;
-            continue;
-        }
-        if !is_section_index {
-            if date_parsed.is_some_and(|d| d > opts.today) && !opts.future {
+        match skip_reason(&raw, date_parsed, layout.is_section_index, opts)? {
+            Some(Skip::Draft) => {
+                site.skipped_drafts += 1;
+                continue;
+            }
+            Some(Skip::Future) => {
                 site.skipped_future += 1;
                 continue;
             }
-            if let Some(exp) = &raw.meta.expiry_date {
-                let exp = parse_date(exp).ok_or_else(|| {
-                    Error::content(
-                        &raw.file,
-                        format!("`expiry_date: {exp}` is not a valid date"),
-                    )
-                })?;
-                if exp <= opts.today {
-                    site.skipped_expired += 1;
-                    continue;
-                }
+            Some(Skip::Expired) => {
+                site.skipped_expired += 1;
+                continue;
             }
+            None => {}
         }
 
-        // Section path and slug.
-        let (section_comps, slug_source): (Vec<String>, String) = if is_section_index {
-            (dir_comps.clone(), String::new())
-        } else if is_bundle {
-            let (last, parents) = dir_comps.split_last().unwrap();
-            (parents.to_vec(), last.clone())
-        } else {
-            (dir_comps.clone(), stem.clone())
-        };
+        let (section_comps, slug_source) = layout.section_and_slug_source();
         let section_path = section_comps
             .iter()
             .map(|c| slugify(c))
             .filter(|c| !c.is_empty())
             .collect::<Vec<_>>()
             .join("/");
-
-        let url = if is_section_index {
-            section_url(&section_path)
-        } else {
-            let slug = match &raw.meta.slug {
-                Some(s) => {
-                    if !slug_ok(s) {
-                        return Err(Error::InvalidPath(format!(
-                            "{}: slug `{s}` may not be empty, start with `.`, or contain `/`, `\\`, `:` or `..`",
-                            raw.file.display()
-                        )));
-                    }
-                    s.clone()
-                }
-                None => {
-                    let s = slugify(&slug_source);
-                    if s.is_empty() {
-                        return Err(Error::InvalidPath(format!(
-                            "{}: cannot derive a URL from `{slug_source}`; set `slug:` in front matter",
-                            raw.file.display()
-                        )));
-                    }
-                    s
-                }
-            };
-            match pattern_for(config, &section_path) {
-                Some(pattern) => {
-                    expand_permalink(pattern, &slug, &section_path, &raw, date_parsed)?
-                }
-                None => format!("{}{slug}/", section_url(&section_path)),
-            }
-        };
+        let url = page_url(
+            config,
+            &raw,
+            &layout,
+            &section_path,
+            &slug_source,
+            date_parsed,
+        )?;
 
         if let Some(prev) = by_url.insert(url.clone(), raw.file.clone()) {
             return Err(Error::UrlCollision {
@@ -336,7 +413,7 @@ pub fn build_model(config: &Config, raws: Vec<RawPage>, opts: &ModelOptions) -> 
 
         let mut meta = raw.meta;
         if meta.title.is_empty() {
-            meta.title = if is_section_index {
+            meta.title = if layout.is_section_index {
                 section_comps
                     .last()
                     .map(|c| humanize(c))
@@ -357,14 +434,14 @@ pub fn build_model(config: &Config, raws: Vec<RawPage>, opts: &ModelOptions) -> 
             reading_time: 0,
             toc: Vec::new(),
             section: section_path,
-            is_index: is_section_index,
+            is_index: layout.is_section_index,
             prev: None,
             next: None,
             body: raw.body,
             file: raw.file,
             source: raw.source,
             date_parsed,
-            is_bundle,
+            is_bundle: layout.is_bundle,
         });
     }
 
