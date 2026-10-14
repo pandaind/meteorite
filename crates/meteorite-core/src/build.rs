@@ -115,23 +115,15 @@ impl Builder {
         }
     }
 
+    /// Runs the whole pipeline once. Each numbered step below hands its result to the next;
+    /// the helpers further down do the actual work.
     pub fn build(&mut self, opts: &BuildOptions) -> Result<BuildReport> {
         let start = Instant::now();
         let root = self.root.clone();
         let mut warnings = Vec::new();
 
-        let (mut config, config_warnings) = Config::load_with_warnings(&root)?;
-        warnings.extend(config_warnings);
-        if let Some(b) = &opts.base_url {
-            config.base_url = b.clone();
-        }
-        if let Some(m) = opts.minify {
-            config.build.minify = m;
-        }
-        if let Some(t) = &opts.theme {
-            crate::theme::check_name(t)?;
-            config.theme = t.clone();
-        }
+        // 1. Settings and theme.
+        let mut config = load_config(&root, opts, &mut warnings)?;
         let drafts = opts.drafts || config.build.drafts;
         let future = opts.future || config.build.future;
 
@@ -141,33 +133,7 @@ impl Builder {
         }
         let theme = Theme::load(&theme_dir)?;
         theme.resolve_params(&mut config.params)?;
-        if let Some(newer) = crate::theme::update_available(&config.theme, &theme.manifest.version)
-        {
-            warnings.push(format!(
-                "theme `{}` is version {} but this release bundles {newer}; it is missing newer features. \
-                 Run `meteorite theme update {}` (your copy is kept in themes/.backup/)",
-                config.theme, theme.manifest.version, config.theme
-            ));
-        }
-        if let Some(serde_norway::Value::String(skin)) = config.params.get("skin") {
-            let known: Vec<&str> = theme
-                .manifest
-                .skins
-                .iter()
-                .map(|s| s.name.as_str())
-                .collect();
-            if !skin.is_empty() && !known.contains(&skin.as_str()) {
-                warnings.push(format!(
-                    "params.skin `{skin}` is not a skin of theme `{}` (available: {})",
-                    theme.manifest.name,
-                    if known.is_empty() {
-                        "none".to_string()
-                    } else {
-                        known.join(", ")
-                    }
-                ));
-            }
-        }
+        warn_about_theme(&config, &theme, &mut warnings);
 
         let out_dir = opts.out_dir.clone().unwrap_or_else(|| root.join("public"));
         let first_build = self.last_out_dir.as_deref() != Some(out_dir.as_path());
@@ -176,36 +142,13 @@ impl Builder {
             prepare_output_dir(&root, &out_dir)?;
         }
 
-        // Templates and functions that don't depend on the site model.
+        // 2. Templates, and the template functions that do not need the site model.
         let (mut tera, templates_hash, uses_chat) = load_templates(&root, &theme_dir)?;
-        if config.chat.enabled() && !uses_chat {
-            warnings.push(format!(
-                "chat is enabled but theme `{}` never calls chat_widget(), so no chat launcher will appear. \
-                 Add `{{{{ chat_widget() | safe }}}}` before </body> in your base template, or run \
-                 `meteorite theme update {}` if this is a bundled theme",
-                config.theme, config.theme
-            ));
-        }
-        tera.set_escape_fn(crate::util::html_escape);
-        register_url_fn(&mut tera, &config.base_url);
-        let chat_widget = (config.chat.enabled() && config.chat.widget == "bundled")
-            .then(crate::chat::bundled_widget);
-        crate::chat::register(
-            &mut tera,
-            &config.chat,
-            &config.base_url,
-            chat_widget.as_ref(),
-        );
-        let generated: images::Generated = Arc::new(Mutex::new(Vec::new()));
-        images::register(
-            &mut tera,
-            &root,
-            &out_dir,
-            &config.base_url,
-            generated.clone(),
-        );
+        warn_if_chat_is_unused(&config, uses_chat, &mut warnings);
+        let (chat_widget, generated_images) =
+            register_core_functions(&mut tera, &root, &out_dir, &config);
 
-        // Content -> model.
+        // 3. Content -> site model -> HTML.
         let raws = content::load_all(&root.join("content"))?;
         let today = opts
             .today
@@ -219,64 +162,10 @@ impl Builder {
                 today,
             },
         )?;
+        check_highlight_themes(&config)?;
+        self.render_markdown(&tera, &config, templates_hash, &mut site)?;
 
-        // Markdown (parallel, cached).
-        if config.markdown.highlight {
-            for name in [
-                &config.markdown.highlight_theme,
-                &config.markdown.highlight_theme_dark,
-            ] {
-                if !markdown::is_highlight_theme(name) {
-                    let mut known = markdown::highlight_theme_names();
-                    known.sort();
-                    return Err(Error::Msg(format!(
-                        "config.yml: unknown highlight theme `{name}`. Available: {}",
-                        known.join(", ")
-                    )));
-                }
-            }
-        }
-        let md_opts = MarkdownOptions {
-            highlight: config.markdown.highlight,
-            highlight_theme: config.markdown.highlight_theme.clone(),
-            classed: config.markdown.highlight_style == HighlightStyle::Classes,
-        };
-        let md_sig = format!(
-            "{}|{}|{}|{}|{}",
-            md_opts.highlight,
-            md_opts.highlight_theme,
-            md_opts.classed,
-            config.base_url,
-            templates_hash
-        );
-        let results: Vec<Result<(u64, Cached)>> = {
-            let cache = &self.cache;
-            site.all
-                .par_iter()
-                .map(|p| {
-                    let key = hash_parts(&[&md_sig, &p.body]);
-                    if let Some((k, c)) = cache.get(&p.file) {
-                        if *k == key {
-                            return Ok((key, c.clone()));
-                        }
-                    }
-                    render_markdown(&tera, &md_opts, p).map(|c| (key, c))
-                })
-                .collect()
-        };
-        let mut new_cache = HashMap::with_capacity(results.len());
-        for (page, res) in site.all.iter_mut().zip(results) {
-            let (key, c) = res?;
-            page.content = c.content.clone();
-            page.summary = c.summary.clone();
-            page.toc = c.toc.clone();
-            page.word_count = c.word_count;
-            page.reading_time = c.reading_time;
-            new_cache.insert(page.file.clone(), (key, c));
-        }
-        self.cache = new_cache;
-
-        // Template data and functions that need the model.
+        // 4. Render every page and listing.
         let data = load_data_dir(&root.join("data"))?;
         register_site_fns(&mut tera, &site, &config);
 
@@ -294,41 +183,13 @@ impl Builder {
         // Site templates override the theme's, so search them first when locating errors.
         let template_dirs = [root.join("templates"), theme_dir.join("templates")];
 
-        // Jobs.
-        let mut jobs: Vec<Job> = (0..site.all.len())
-            .filter(|&i| !site.all[i].is_index)
-            .map(Job::Page)
-            .collect();
-        for sec in site.sections.values() {
-            let per = sec.meta.paginate_by.or(config.paginate_by);
-            for (n, range) in paginate(sec.pages.len(), per).into_iter().enumerate() {
-                jobs.push(Job::Section {
-                    path: sec.path.clone(),
-                    number: n + 1,
-                    range,
-                    total: paginate(sec.pages.len(), per).len(),
-                });
-            }
-        }
-        for (tax, terms) in &site.taxonomies {
-            jobs.push(Job::TaxonomyIndex(tax.clone()));
-            for index in 0..terms.len() {
-                jobs.push(Job::Term {
-                    taxonomy: tax.clone(),
-                    index,
-                });
-            }
-        }
-        if tera.get_template_names().any(|n| n == "404.html") {
-            jobs.push(Job::NotFound);
-        }
-
+        let jobs = plan_jobs(&site, &config, &tera);
         let rendered: Vec<Result<(PathBuf, Vec<u8>)>> = jobs
             .par_iter()
             .map(|job| render_job(job, &tera, &site, &config, &base, &template_dirs))
             .collect();
 
-        // Collect outputs. Later inserts win: theme static < site static < assets < pages.
+        // 5. Everything that ends up in the output folder.
         // The knowledge base is collected once and used for the directory export and/or the
         // published JSON file. Publishing is site output, so `serve` and `check` include it.
         let k = &config.chat.knowledge;
@@ -338,113 +199,21 @@ impl Builder {
         } else {
             Vec::new()
         };
+        let mut outputs = collect_outputs(
+            &root,
+            &theme_dir,
+            &config,
+            &site,
+            chat_widget.as_ref(),
+            &knowledge_docs,
+            rendered,
+        )?;
+        add_feeds_and_robots(&mut outputs, &config, &site, &mut warnings);
 
-        let mut outputs: HashMap<PathBuf, Source> = HashMap::new();
-        if let Some(w) = &chat_widget {
-            outputs.insert(PathBuf::from(&w.path), Source::Bytes(w.bytes.clone()));
-            outputs.insert(
-                PathBuf::from(w.license_path),
-                Source::Bytes(w.license.clone().into_bytes()),
-            );
-        }
-        if k.publish {
-            outputs.insert(
-                PathBuf::from(&k.publish_path),
-                Source::Bytes(
-                    crate::knowledge::published_json(&config, &knowledge_docs).into_bytes(),
-                ),
-            );
-        }
-        if config.markdown.highlight {
-            // Always generated, so a theme can link it unconditionally; a file of the same
-            // name in the theme's or site's static/ overrides it.
-            let css = markdown::highlight_css(
-                &config.markdown.highlight_theme,
-                &config.markdown.highlight_theme_dark,
-            );
-            outputs.insert("highlight.css".into(), Source::Bytes(css.into_bytes()));
-        }
-        collect_files(&theme_dir.join("static"), Path::new(""), &mut outputs)?;
-        collect_files(&root.join("static"), Path::new(""), &mut outputs)?;
-        collect_content_assets(&root.join("content"), &site, &mut outputs)?;
-        for r in rendered {
-            let (path, bytes) = r?;
-            outputs.insert(path, Source::Bytes(bytes));
-        }
-
-        // Feeds, sitemap, robots, search.
-        let absolute = is_absolute_url(&config.base_url);
-        let has_dated = site
-            .all
-            .iter()
-            .any(|p| !p.is_index && p.date_parsed.is_some());
-        if ((config.feed.enabled && has_dated) || config.sitemap) && !absolute {
-            warnings.push(format!(
-                "base_url `{}` is not absolute: feeds and sitemap.xml were skipped (set e.g. `base_url: https://example.com/`)",
-                config.base_url
-            ));
-        }
-        if absolute {
-            if config.feed.enabled && has_dated {
-                outputs.insert(
-                    "atom.xml".into(),
-                    Source::Bytes(feed::atom(&config, &site).into()),
-                );
-                outputs.insert(
-                    "rss.xml".into(),
-                    Source::Bytes(feed::rss(&config, &site).into()),
-                );
-            }
-            if config.sitemap {
-                outputs.insert(
-                    "sitemap.xml".into(),
-                    Source::Bytes(feed::sitemap(&site).into()),
-                );
-            }
-        }
-        if !outputs.contains_key(Path::new("robots.txt")) {
-            let robots = feed::robots(&config, absolute && config.sitemap);
-            outputs.insert("robots.txt".into(), Source::Bytes(robots.into()));
-        }
-        if config.search.enabled {
-            outputs.insert(
-                "search-index.json".into(),
-                Source::Bytes(feed::search_index(&config, &site).into()),
-            );
-        }
-
-        // Files created directly by template functions (processed images).
-        let generated: Vec<PathBuf> = generated.lock().unwrap().clone();
-
-        // Write.
-        let minify_on = config.build.minify;
-        let items: Vec<(&PathBuf, &Source)> = outputs.iter().collect();
-        let results: Vec<Result<bool>> = items
-            .par_iter()
-            .map(|(rel, src)| write_output(&out_dir, rel, src, minify_on))
-            .collect();
-        let mut written = 0;
-        let mut unchanged = 0;
-        for r in results {
-            if r? {
-                written += 1;
-            } else {
-                unchanged += 1;
-            }
-        }
-
-        // Remove files that an earlier build produced but this one didn't.
-        let mut now: HashSet<PathBuf> = outputs.keys().cloned().collect();
-        now.extend(generated);
-        let mut removed = 0;
-        for stale in self.last_outputs.difference(&now) {
-            let path = out_dir.join(stale);
-            if path.is_file() && fs::remove_file(&path).is_ok() {
-                removed += 1;
-                prune_empty_dirs(path.parent(), &out_dir);
-            }
-        }
-        self.last_outputs = now;
+        // 6. Write, then remove what an earlier build produced but this one did not.
+        let (written, unchanged) = write_outputs(&out_dir, &outputs, config.build.minify)?;
+        let generated: Vec<PathBuf> = generated_images.lock().unwrap().clone();
+        let removed = self.remove_stale_outputs(&outputs, generated, &out_dir);
         self.last_out_dir = Some(out_dir.clone());
 
         let knowledge = if wants_dir_export {
@@ -468,6 +237,333 @@ impl Builder {
             knowledge,
         })
     }
+
+    /// Turns every page's Markdown into HTML in parallel, reusing the previous result when the
+    /// page, the Markdown settings and the templates are unchanged.
+    fn render_markdown(
+        &mut self,
+        tera: &Tera,
+        config: &Config,
+        templates_hash: u64,
+        site: &mut Site,
+    ) -> Result<()> {
+        let md_opts = MarkdownOptions {
+            highlight: config.markdown.highlight,
+            highlight_theme: config.markdown.highlight_theme.clone(),
+            classed: config.markdown.highlight_style == HighlightStyle::Classes,
+        };
+        // Anything that changes the HTML for the same Markdown belongs in this signature.
+        let signature = format!(
+            "{}|{}|{}|{}|{}",
+            md_opts.highlight,
+            md_opts.highlight_theme,
+            md_opts.classed,
+            config.base_url,
+            templates_hash
+        );
+        let results: Vec<Result<(u64, Cached)>> = {
+            let cache = &self.cache;
+            site.all
+                .par_iter()
+                .map(|p| {
+                    let key = hash_parts(&[&signature, &p.body]);
+                    if let Some((k, c)) = cache.get(&p.file) {
+                        if *k == key {
+                            return Ok((key, c.clone()));
+                        }
+                    }
+                    render_markdown(tera, &md_opts, p).map(|c| (key, c))
+                })
+                .collect()
+        };
+        let mut new_cache = HashMap::with_capacity(results.len());
+        for (page, res) in site.all.iter_mut().zip(results) {
+            let (key, c) = res?;
+            page.content = c.content.clone();
+            page.summary = c.summary.clone();
+            page.toc = c.toc.clone();
+            page.word_count = c.word_count;
+            page.reading_time = c.reading_time;
+            new_cache.insert(page.file.clone(), (key, c));
+        }
+        self.cache = new_cache;
+        Ok(())
+    }
+
+    /// Deletes files that an earlier build wrote and this one did not, and remembers this
+    /// build's file list for next time. Returns how many files were removed.
+    fn remove_stale_outputs(
+        &mut self,
+        outputs: &HashMap<PathBuf, Source>,
+        generated: Vec<PathBuf>,
+        out_dir: &Path,
+    ) -> usize {
+        let mut now: HashSet<PathBuf> = outputs.keys().cloned().collect();
+        now.extend(generated);
+        let mut removed = 0;
+        for stale in self.last_outputs.difference(&now) {
+            let path = out_dir.join(stale);
+            if path.is_file() && fs::remove_file(&path).is_ok() {
+                removed += 1;
+                prune_empty_dirs(path.parent(), out_dir);
+            }
+        }
+        self.last_outputs = now;
+        removed
+    }
+}
+
+/// Loads `config.yml` and applies the command-line overrides.
+fn load_config(root: &Path, opts: &BuildOptions, warnings: &mut Vec<String>) -> Result<Config> {
+    let (mut config, config_warnings) = Config::load_with_warnings(root)?;
+    warnings.extend(config_warnings);
+    if let Some(b) = &opts.base_url {
+        config.base_url = b.clone();
+    }
+    if let Some(m) = opts.minify {
+        config.build.minify = m;
+    }
+    if let Some(t) = &opts.theme {
+        crate::theme::check_name(t)?;
+        config.theme = t.clone();
+    }
+    Ok(config)
+}
+
+/// Warns when the site's copy of the theme is older than the bundled one, or when
+/// `params.skin` names a skin the theme does not have.
+fn warn_about_theme(config: &Config, theme: &Theme, warnings: &mut Vec<String>) {
+    if let Some(newer) = crate::theme::update_available(&config.theme, &theme.manifest.version) {
+        warnings.push(format!(
+            "theme `{}` is version {} but this release bundles {newer}; it is missing newer features. \
+             Run `meteorite theme update {}` (your copy is kept in themes/.backup/)",
+            config.theme, theme.manifest.version, config.theme
+        ));
+    }
+    if let Some(serde_norway::Value::String(skin)) = config.params.get("skin") {
+        let known: Vec<&str> = theme
+            .manifest
+            .skins
+            .iter()
+            .map(|s| s.name.as_str())
+            .collect();
+        if !skin.is_empty() && !known.contains(&skin.as_str()) {
+            warnings.push(format!(
+                "params.skin `{skin}` is not a skin of theme `{}` (available: {})",
+                theme.manifest.name,
+                if known.is_empty() {
+                    "none".to_string()
+                } else {
+                    known.join(", ")
+                }
+            ));
+        }
+    }
+}
+
+/// Warns when chat is configured but the theme never places the launcher.
+fn warn_if_chat_is_unused(config: &Config, uses_chat: bool, warnings: &mut Vec<String>) {
+    if config.chat.enabled() && !uses_chat {
+        warnings.push(format!(
+            "chat is enabled but theme `{}` never calls chat_widget(), so no chat launcher will appear. \
+             Add `{{{{ chat_widget() | safe }}}}` before </body> in your base template, or run \
+             `meteorite theme update {}` if this is a bundled theme",
+            config.theme, config.theme
+        ));
+    }
+}
+
+/// Registers the template functions that do not depend on the site model: escaping, `url()`,
+/// the chat widget and image processing. Returns the bundled chat widget (when it is used)
+/// and the list of image files the template functions create while rendering.
+fn register_core_functions(
+    tera: &mut Tera,
+    root: &Path,
+    out_dir: &Path,
+    config: &Config,
+) -> (Option<crate::chat::BundledWidget>, images::Generated) {
+    tera.set_escape_fn(crate::util::html_escape);
+    register_url_fn(tera, &config.base_url);
+    let chat_widget = (config.chat.enabled() && config.chat.widget == "bundled")
+        .then(crate::chat::bundled_widget);
+    crate::chat::register(tera, &config.chat, &config.base_url, chat_widget.as_ref());
+    let generated: images::Generated = Arc::new(Mutex::new(Vec::new()));
+    images::register(tera, root, out_dir, &config.base_url, generated.clone());
+    (chat_widget, generated)
+}
+
+/// Fails early, with the list of valid names, when a highlight theme is misspelled.
+fn check_highlight_themes(config: &Config) -> Result<()> {
+    if !config.markdown.highlight {
+        return Ok(());
+    }
+    for name in [
+        &config.markdown.highlight_theme,
+        &config.markdown.highlight_theme_dark,
+    ] {
+        if !markdown::is_highlight_theme(name) {
+            let mut known = markdown::highlight_theme_names();
+            known.sort();
+            return Err(Error::Msg(format!(
+                "config.yml: unknown highlight theme `{name}`. Available: {}",
+                known.join(", ")
+            )));
+        }
+    }
+    Ok(())
+}
+
+/// Lists everything that has to be rendered: single pages, every page of each section
+/// listing, taxonomy indexes and terms, and the 404 page when the theme has one.
+fn plan_jobs(site: &Site, config: &Config, tera: &Tera) -> Vec<Job> {
+    let mut jobs: Vec<Job> = (0..site.all.len())
+        .filter(|&i| !site.all[i].is_index)
+        .map(Job::Page)
+        .collect();
+    for sec in site.sections.values() {
+        let per = sec.meta.paginate_by.or(config.paginate_by);
+        let ranges = paginate(sec.pages.len(), per);
+        let total = ranges.len();
+        for (n, range) in ranges.into_iter().enumerate() {
+            jobs.push(Job::Section {
+                path: sec.path.clone(),
+                number: n + 1,
+                range,
+                total,
+            });
+        }
+    }
+    for (tax, terms) in &site.taxonomies {
+        jobs.push(Job::TaxonomyIndex(tax.clone()));
+        for index in 0..terms.len() {
+            jobs.push(Job::Term {
+                taxonomy: tax.clone(),
+                index,
+            });
+        }
+    }
+    if tera.get_template_names().any(|n| n == "404.html") {
+        jobs.push(Job::NotFound);
+    }
+    jobs
+}
+
+/// Gathers every file of the output folder except feeds, the sitemap and robots.txt.
+/// Later inserts win: theme static < site static < content assets < rendered pages.
+fn collect_outputs(
+    root: &Path,
+    theme_dir: &Path,
+    config: &Config,
+    site: &Site,
+    chat_widget: Option<&crate::chat::BundledWidget>,
+    knowledge_docs: &[crate::knowledge::KnowledgeDoc],
+    rendered: Vec<Result<(PathBuf, Vec<u8>)>>,
+) -> Result<HashMap<PathBuf, Source>> {
+    let mut outputs: HashMap<PathBuf, Source> = HashMap::new();
+    if let Some(w) = chat_widget {
+        outputs.insert(PathBuf::from(&w.path), Source::Bytes(w.bytes.clone()));
+        outputs.insert(
+            PathBuf::from(w.license_path),
+            Source::Bytes(w.license.clone().into_bytes()),
+        );
+    }
+    let k = &config.chat.knowledge;
+    if k.publish {
+        outputs.insert(
+            PathBuf::from(&k.publish_path),
+            Source::Bytes(crate::knowledge::published_json(config, knowledge_docs).into_bytes()),
+        );
+    }
+    if config.markdown.highlight {
+        // Always generated, so a theme can link it unconditionally; a file of the same
+        // name in the theme's or site's static/ overrides it.
+        let css = markdown::highlight_css(
+            &config.markdown.highlight_theme,
+            &config.markdown.highlight_theme_dark,
+        );
+        outputs.insert("highlight.css".into(), Source::Bytes(css.into_bytes()));
+    }
+    collect_files(&theme_dir.join("static"), Path::new(""), &mut outputs)?;
+    collect_files(&root.join("static"), Path::new(""), &mut outputs)?;
+    collect_content_assets(&root.join("content"), site, &mut outputs)?;
+    for r in rendered {
+        let (path, bytes) = r?;
+        outputs.insert(path, Source::Bytes(bytes));
+    }
+    Ok(outputs)
+}
+
+/// Adds the Atom and RSS feeds, sitemap.xml, robots.txt and the search index. Feeds and the
+/// sitemap need an absolute `base_url`; a warning explains when they are skipped.
+fn add_feeds_and_robots(
+    outputs: &mut HashMap<PathBuf, Source>,
+    config: &Config,
+    site: &Site,
+    warnings: &mut Vec<String>,
+) {
+    let absolute = is_absolute_url(&config.base_url);
+    let has_dated = site
+        .all
+        .iter()
+        .any(|p| !p.is_index && p.date_parsed.is_some());
+    if ((config.feed.enabled && has_dated) || config.sitemap) && !absolute {
+        warnings.push(format!(
+            "base_url `{}` is not absolute: feeds and sitemap.xml were skipped (set e.g. `base_url: https://example.com/`)",
+            config.base_url
+        ));
+    }
+    if absolute {
+        if config.feed.enabled && has_dated {
+            outputs.insert(
+                "atom.xml".into(),
+                Source::Bytes(feed::atom(config, site).into()),
+            );
+            outputs.insert(
+                "rss.xml".into(),
+                Source::Bytes(feed::rss(config, site).into()),
+            );
+        }
+        if config.sitemap {
+            outputs.insert(
+                "sitemap.xml".into(),
+                Source::Bytes(feed::sitemap(site).into()),
+            );
+        }
+    }
+    if !outputs.contains_key(Path::new("robots.txt")) {
+        let robots = feed::robots(config, absolute && config.sitemap);
+        outputs.insert("robots.txt".into(), Source::Bytes(robots.into()));
+    }
+    if config.search.enabled {
+        outputs.insert(
+            "search-index.json".into(),
+            Source::Bytes(feed::search_index(config, site).into()),
+        );
+    }
+}
+
+/// Writes every output file in parallel and returns (written, unchanged) counts. A file whose
+/// content is already on disk is left untouched.
+fn write_outputs(
+    out_dir: &Path,
+    outputs: &HashMap<PathBuf, Source>,
+    minify_on: bool,
+) -> Result<(usize, usize)> {
+    let items: Vec<(&PathBuf, &Source)> = outputs.iter().collect();
+    let results: Vec<Result<bool>> = items
+        .par_iter()
+        .map(|(rel, src)| write_output(out_dir, rel, src, minify_on))
+        .collect();
+    let mut written = 0;
+    let mut unchanged = 0;
+    for r in results {
+        if r? {
+            written += 1;
+        } else {
+            unchanged += 1;
+        }
+    }
+    Ok((written, unchanged))
 }
 
 #[derive(Serialize)]
@@ -866,6 +962,11 @@ struct TermView<'a> {
     count: usize,
 }
 
+/// What a job needs from a template: the template's name and where its output goes.
+type Target = (String, PathBuf);
+
+/// Renders one page or listing. Each job kind first fills the template context with what its
+/// template expects (`page`, `section`, `paginator`, `taxonomy`, ...), then the template runs.
 fn render_job(
     job: &Job,
     tera: &Tera,
@@ -875,153 +976,198 @@ fn render_job(
     template_dirs: &[PathBuf],
 ) -> Result<(PathBuf, Vec<u8>)> {
     let mut ctx = base.clone();
-    let (template, out_path): (String, PathBuf) = match job {
-        Job::Page(i) => {
-            let page = &site.all[*i];
-            let parent = &site.sections[&page.section];
-            ctx.insert("page", page);
-            ctx.insert(
-                "section",
-                &ParentRef {
-                    path: &parent.path,
-                    url: &parent.url,
-                    title: &parent.title,
-                },
-            );
-            (
-                page.meta
-                    .template
-                    .clone()
-                    .unwrap_or_else(|| "page.html".into()),
-                page.output_path(),
-            )
-        }
+    let (template, out_path) = match job {
+        Job::Page(i) => prepare_page(&mut ctx, site, *i),
         Job::Section {
             path,
             number,
             range,
             total,
-        } => {
-            let sec = &site.sections[path];
-            let per = sec.meta.paginate_by.or(config.paginate_by);
-            let slice = &sec.pages[range.clone()];
-            ctx.insert("section", &section_view(site, config, path, slice));
-            match sec.index {
-                Some(i) => ctx.insert("page", &site.all[i]),
-                None => ctx.insert(
-                    "page",
-                    &Page::synthetic(&sec.title, &sec.url, &config.base_url),
-                ),
-            }
-            ctx.insert(
-                "paginator",
-                &Paginator {
-                    number: *number,
-                    total_pages: *total,
-                    per_page: per.unwrap_or(sec.pages.len()),
-                    total_items: sec.pages.len(),
-                    current_url: page_url(&sec.url, *number),
-                    first_url: page_url(&sec.url, 1),
-                    last_url: page_url(&sec.url, *total),
-                    prev_url: (*number > 1).then(|| page_url(&sec.url, number - 1)),
-                    next_url: (number < total).then(|| page_url(&sec.url, number + 1)),
-                },
-            );
-            let default = if path.is_empty() {
-                "index.html"
-            } else {
-                "section.html"
-            };
-            (
-                sec.meta.template.clone().unwrap_or_else(|| default.into()),
-                url_to_path(&page_url(&sec.url, *number)),
-            )
-        }
-        Job::TaxonomyIndex(tax) => {
-            let terms = &site.taxonomies[tax];
-            let url = format!("/{}/", slugify(tax));
-            ctx.insert(
-                "taxonomy",
-                &TaxonomyView {
-                    name: tax,
-                    url: url.clone(),
-                },
-            );
-            ctx.insert(
-                "terms",
-                &terms
-                    .iter()
-                    .map(|t| TermView {
-                        name: &t.name,
-                        slug: &t.slug,
-                        url: &t.url,
-                        count: t.pages.len(),
-                    })
-                    .collect::<Vec<_>>(),
-            );
-            ctx.insert("page", &Page::synthetic(tax, &url, &config.base_url));
-            ("taxonomy.html".into(), url_to_path(&url))
-        }
-        Job::Term { taxonomy, index } => {
-            let term = &site.taxonomies[taxonomy][*index];
-            let tax_url = format!("/{}/", slugify(taxonomy));
-            ctx.insert(
-                "taxonomy",
-                &TaxonomyView {
-                    name: taxonomy,
-                    url: tax_url,
-                },
-            );
-            ctx.insert(
-                "term",
-                &TermView {
-                    name: &term.name,
-                    slug: &term.slug,
-                    url: &term.url,
-                    count: term.pages.len(),
-                },
-            );
-            ctx.insert(
-                "pages",
-                &term
-                    .pages
-                    .iter()
-                    .map(|&i| site.listing(i))
-                    .collect::<Vec<_>>(),
-            );
-            ctx.insert(
-                "page",
-                &Page::synthetic(&term.name, &term.url, &config.base_url),
-            );
-            ("term.html".into(), url_to_path(&term.url))
-        }
-        Job::NotFound => {
-            ctx.insert(
-                "page",
-                &Page::synthetic("Page not found", "/404.html", &config.base_url),
-            );
-            ("404.html".into(), PathBuf::from("404.html"))
-        }
+        } => prepare_section(&mut ctx, site, config, path, *number, range, *total),
+        Job::TaxonomyIndex(tax) => prepare_taxonomy_index(&mut ctx, site, config, tax),
+        Job::Term { taxonomy, index } => prepare_term(&mut ctx, site, config, taxonomy, *index),
+        Job::NotFound => prepare_not_found(&mut ctx, config),
     };
-    let html = tera.render(&template, &ctx).map_err(|e| {
-        let what = match job {
-            Job::Page(i) => site.all[*i].source.display().to_string(),
-            Job::Section { path, .. } => format!("section `{path}`"),
-            Job::TaxonomyIndex(t) => format!("taxonomy `{t}`"),
-            Job::Term { taxonomy, .. } => format!("taxonomy `{taxonomy}`"),
-            Job::NotFound => "404".to_string(),
-        };
-        match tera_err(e) {
-            Error::Template(m) => {
-                let hint = locate_in_templates(template_dirs, &m)
-                    .map(|(p, line)| format!(" (likely at {}:{line})", p.display()))
-                    .unwrap_or_default();
-                Error::Template(format!("rendering {what} with {template}: {m}{hint}"))
-            }
-            other => other,
-        }
-    })?;
+    let html = tera
+        .render(&template, &ctx)
+        .map_err(|e| render_error(e, job, site, &template, template_dirs))?;
     Ok((out_path, html.into_bytes()))
+}
+
+/// A single page, with its section as `section`.
+fn prepare_page(ctx: &mut Context, site: &Site, index: usize) -> Target {
+    let page = &site.all[index];
+    let parent = &site.sections[&page.section];
+    ctx.insert("page", page);
+    ctx.insert(
+        "section",
+        &ParentRef {
+            path: &parent.path,
+            url: &parent.url,
+            title: &parent.title,
+        },
+    );
+    (
+        page.meta
+            .template
+            .clone()
+            .unwrap_or_else(|| "page.html".into()),
+        page.output_path(),
+    )
+}
+
+/// One page of a section listing, with `section`, `page` (the section's index page, or a
+/// stand-in) and `paginator`.
+fn prepare_section(
+    ctx: &mut Context,
+    site: &Site,
+    config: &Config,
+    path: &str,
+    number: usize,
+    range: &Range<usize>,
+    total: usize,
+) -> Target {
+    let sec = &site.sections[path];
+    let per = sec.meta.paginate_by.or(config.paginate_by);
+    let slice = &sec.pages[range.clone()];
+    ctx.insert("section", &section_view(site, config, path, slice));
+    match sec.index {
+        Some(i) => ctx.insert("page", &site.all[i]),
+        None => ctx.insert(
+            "page",
+            &Page::synthetic(&sec.title, &sec.url, &config.base_url),
+        ),
+    }
+    ctx.insert(
+        "paginator",
+        &Paginator {
+            number,
+            total_pages: total,
+            per_page: per.unwrap_or(sec.pages.len()),
+            total_items: sec.pages.len(),
+            current_url: page_url(&sec.url, number),
+            first_url: page_url(&sec.url, 1),
+            last_url: page_url(&sec.url, total),
+            prev_url: (number > 1).then(|| page_url(&sec.url, number - 1)),
+            next_url: (number < total).then(|| page_url(&sec.url, number + 1)),
+        },
+    );
+    let default = if path.is_empty() {
+        "index.html"
+    } else {
+        "section.html"
+    };
+    (
+        sec.meta.template.clone().unwrap_or_else(|| default.into()),
+        url_to_path(&page_url(&sec.url, number)),
+    )
+}
+
+/// The page that lists every term of a taxonomy (for example `/tags/`).
+fn prepare_taxonomy_index(
+    ctx: &mut Context,
+    site: &Site,
+    config: &Config,
+    taxonomy: &str,
+) -> Target {
+    let terms = &site.taxonomies[taxonomy];
+    let url = format!("/{}/", slugify(taxonomy));
+    ctx.insert(
+        "taxonomy",
+        &TaxonomyView {
+            name: taxonomy,
+            url: url.clone(),
+        },
+    );
+    ctx.insert(
+        "terms",
+        &terms
+            .iter()
+            .map(|t| TermView {
+                name: &t.name,
+                slug: &t.slug,
+                url: &t.url,
+                count: t.pages.len(),
+            })
+            .collect::<Vec<_>>(),
+    );
+    ctx.insert("page", &Page::synthetic(taxonomy, &url, &config.base_url));
+    ("taxonomy.html".into(), url_to_path(&url))
+}
+
+/// The page that lists the pages carrying one term (for example `/tags/rust/`).
+fn prepare_term(
+    ctx: &mut Context,
+    site: &Site,
+    config: &Config,
+    taxonomy: &str,
+    index: usize,
+) -> Target {
+    let term = &site.taxonomies[taxonomy][index];
+    ctx.insert(
+        "taxonomy",
+        &TaxonomyView {
+            name: taxonomy,
+            url: format!("/{}/", slugify(taxonomy)),
+        },
+    );
+    ctx.insert(
+        "term",
+        &TermView {
+            name: &term.name,
+            slug: &term.slug,
+            url: &term.url,
+            count: term.pages.len(),
+        },
+    );
+    ctx.insert(
+        "pages",
+        &term
+            .pages
+            .iter()
+            .map(|&i| site.listing(i))
+            .collect::<Vec<_>>(),
+    );
+    ctx.insert(
+        "page",
+        &Page::synthetic(&term.name, &term.url, &config.base_url),
+    );
+    ("term.html".into(), url_to_path(&term.url))
+}
+
+fn prepare_not_found(ctx: &mut Context, config: &Config) -> Target {
+    ctx.insert(
+        "page",
+        &Page::synthetic("Page not found", "/404.html", &config.base_url),
+    );
+    ("404.html".into(), PathBuf::from("404.html"))
+}
+
+/// Wraps a template failure with what was being rendered and, when it can be found, the line
+/// of the template file that caused it.
+fn render_error(
+    e: tera::Error,
+    job: &Job,
+    site: &Site,
+    template: &str,
+    template_dirs: &[PathBuf],
+) -> Error {
+    let what = match job {
+        Job::Page(i) => site.all[*i].source.display().to_string(),
+        Job::Section { path, .. } => format!("section `{path}`"),
+        Job::TaxonomyIndex(t) => format!("taxonomy `{t}`"),
+        Job::Term { taxonomy, .. } => format!("taxonomy `{taxonomy}`"),
+        Job::NotFound => "404".to_string(),
+    };
+    match tera_err(e) {
+        Error::Template(m) => {
+            let hint = locate_in_templates(template_dirs, &m)
+                .map(|(p, line)| format!(" (likely at {}:{line})", p.display()))
+                .unwrap_or_default();
+            Error::Template(format!("rendering {what} with {template}: {m}{hint}"))
+        }
+        other => other,
+    }
 }
 
 fn collect_files(dir: &Path, prefix: &Path, out: &mut HashMap<PathBuf, Source>) -> Result<()> {
